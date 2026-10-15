@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets: never commit
+.env
+
+# Local scraper samples (Module 2)
+samples/
