@@ -1,0 +1,18 @@
+# What the LinkedIn jobs pipeline searches for each month.
+# Change roles or limits here; no code changes needed.
+
+actor_id: curious_coder/linkedin-jobs-scraper
+
+searches:
+  - data scientist
+  - data analyst
+  #- machine learning engineer
+
+location: United States
+date_posted: pastMonth      # anyTime | past24Hours | pastWeek | pastMonth
+limit_per_search: 1000      # LinkedIn returns at most ~1,000 per search
+scrape_company: true        # extra company details (size, website); slower
+
+# Search city by city to get past the 1,000 cap. More results = more cost.
+split_by_location: false
+split_country: US
