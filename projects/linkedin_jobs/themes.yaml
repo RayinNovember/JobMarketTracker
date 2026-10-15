@@ -1,0 +1,33 @@
+# Themes tagged in each job description. A posting gets a theme when any phrase
+# appears as a whole word (case-insensitive). Edit freely; re-tag history with:
+#   python -m projects.linkedin_jobs.run --retag
+
+- theme: Machine learning modeling
+  phrases: [machine learning, predictive model, predictive models, predictive modeling, classification, regression models, gradient boosting, xgboost, lightgbm, random forest, scikit-learn, sklearn, deep learning, pytorch, tensorflow]
+
+- theme: Generative AI & LLMs
+  phrases: [generative ai, genai, gen ai, llm, llms, large language model, large language models, rag, retrieval augmented, retrieval-augmented, prompt engineering, fine-tuning, fine tuning, langchain, ai agents, agentic]
+
+- theme: Experimentation & causal inference
+  phrases: [a/b test, a/b testing, ab testing, experimentation, experiment design, controlled experiments, causal inference, causal, uplift, difference-in-differences, quasi-experimental]
+
+- theme: SQL & data pipelines
+  phrases: [sql, etl, elt, dbt, data pipeline, data pipelines, airflow, spark, pyspark, snowflake, bigquery, data warehouse, data modeling]
+
+- theme: Statistical rigor
+  phrases: [statistics, statistical, hypothesis testing, bayesian, inference, statistical modeling, survival analysis, time-to-event]
+
+- theme: Cloud & MLOps
+  phrases: [aws, azure, gcp, google cloud, databricks, mlops, mlflow, sagemaker, model deployment, deploy models, docker, kubernetes, ci/cd, production models]
+
+- theme: Stakeholder communication
+  phrases: [stakeholder, stakeholders, cross-functional, storytelling, communicate findings, communication skills, executive, business partners, translate business]
+
+- theme: Dashboards & BI
+  phrases: [dashboard, dashboards, tableau, power bi, looker, business intelligence, kpi, kpis, reporting]
+
+- theme: Forecasting & time series
+  phrases: [forecasting, forecast, time series, time-series, demand planning, arima, prophet]
+
+- theme: Product analytics
+  phrases: [product analytics, product metrics, funnel, funnels, retention, user behavior, engagement metrics, growth analytics]
