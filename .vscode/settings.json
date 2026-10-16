@@ -7,5 +7,7 @@
         "~/.copilot/skills": true,
         "~/.claude/skills": true,
         "~/.vscode/extensions/synapsevscode.synapse-1.26.0/copilot/skills": true
-    }
+    },
+    // This project's SQL is PostgreSQL (Supabase); don't check it as SQL Server T-SQL
+    "mssql.intelliSense.enableErrorChecking": false
 }
