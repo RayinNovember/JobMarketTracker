@@ -1,0 +1,18 @@
+[
+  {"id": "4100000001", "link": "https://www.linkedin.com/jobs/view/4100000001", "title": "Senior Data Scientist",
+   "companyName": "Example Health", "companyLinkedinUrl": "https://www.linkedin.com/company/example-health",
+   "location": "Columbus, OH", "salaryInfo": ["$130,000.00/yr", "$160,000.00/yr"], "postedAt": "2026-09-28",
+   "applicantsCount": "87", "descriptionText": "Build predictive models and run A/B testing. Strong SQL and Python. Communicate findings to stakeholders. Experience with LLMs a plus.",
+   "jobPosterName": "Jane Recruiter", "jobPosterProfileUrl": "https://www.linkedin.com/in/someone",
+   "seniorityLevel": "Mid-Senior level", "employmentType": "Full-time", "jobFunction": "Engineering and Information Technology",
+   "industries": "Hospitals and Health Care", "companyEmployeesCount": 5400},
+  {"id": "4100000002", "link": "https://www.linkedin.com/jobs/view/4100000002", "title": "Data Analyst",
+   "companyName": "Example Staffing", "location": "Remote", "salaryInfo": ["$45.00/hr", "$55.00/hr"], "postedAt": "2026-10-02",
+   "applicantsCount": "Over 200 applicants", "descriptionText": "Tableau dashboards and SQL reporting. Forecasting a plus.",
+   "seniorityLevel": "Associate", "employmentType": "Contract", "jobFunction": "Information Technology",
+   "industries": "Staffing and Recruiting", "workRemoteAllowed": true},
+  {"id": "4100000003", "link": "https://www.linkedin.com/jobs/view/4100000003", "title": "Data Analyst",
+   "companyName": "Example Staffing", "location": "Remote", "postedAt": "2026-10-09",
+   "descriptionText": "Tableau dashboards and SQL reporting. Forecasting a plus.",
+   "seniorityLevel": "Associate", "employmentType": "Contract", "industries": "Staffing and Recruiting"}
+]

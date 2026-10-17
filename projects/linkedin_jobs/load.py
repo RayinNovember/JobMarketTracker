@@ -69,3 +69,5 @@ def retag_all(conn: psycopg.Connection, tagger) -> int:
         )
     conn.commit()
     return len(rows)
+
+
