@@ -33,3 +33,5 @@ if __name__ == "__main__":
         else:
             for name in migrate(conn):
                 print(f"Applied {name}")
+
+

@@ -11,3 +11,7 @@ for r in rows:
     print(r["title"], "|", r["primary_industry"], "|", r["salary_min"], r["salary_period"], "|", r["themes"])
 
 parse_salary(["$45.00/hr", "$55.00/hr"])
+
+# Load Samples to Supabase
+
+
