@@ -73,7 +73,7 @@ def to_row(item: dict, search_terms: list[str], tagger: ThemeTagger) -> dict:
     if isinstance(industries, list):
         industries = ", ".join(industries)
     desc = item.get("descriptionText") or ""
-    sal_min, sal_max, sal_period = parse_salary(item.get("salaryInfo"))
+    sal_min, sal_max, sal_period = parse_salary(item.get("salaryInfo") or item.get("salary"))
     return {
         "job_id": str(item["id"]),
         "title": item.get("title"),

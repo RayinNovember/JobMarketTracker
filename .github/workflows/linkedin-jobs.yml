@@ -2,7 +2,7 @@ name: LinkedIn jobs (monthly)
 
 on:
   schedule:
-    - cron: "17 11 1 * *"     # 1st of each month, 11:17 UTC (7:17am Eastern in summer)
+    - cron: "17 11 15 * *"    # 15th of each month, 11:17 UTC (7:17am Eastern in summer), just after Apify's free credit resets on the 14th
   workflow_dispatch:
     inputs:
       limit:
