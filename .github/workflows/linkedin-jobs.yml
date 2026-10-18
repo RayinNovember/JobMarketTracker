@@ -1,0 +1,35 @@
+name: LinkedIn jobs (monthly)
+
+on:
+  schedule:
+    - cron: "17 11 1 * *"     # 1st of each month, 11:17 UTC (7:17am Eastern in summer)
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max jobs per search (blank = config.yaml)"
+        required: false
+      searches:
+        description: "Comma-separated search terms (blank = config.yaml)"
+        required: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --no-dev
+      - name: Scrape and load
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          LIMIT: ${{ inputs.limit }}
+          SEARCHES: ${{ inputs.searches }}
+        run: |
+          ARGS=()
+          if [ -n "$LIMIT" ]; then ARGS+=(--limit "$LIMIT"); fi
+          if [ -n "$SEARCHES" ]; then ARGS+=(--searches "$SEARCHES"); fi
+          uv run --no-dev python -m projects.linkedin_jobs.run "${ARGS[@]}"

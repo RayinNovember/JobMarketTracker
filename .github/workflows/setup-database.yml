@@ -1,0 +1,21 @@
+name: Set up database
+
+on:
+  workflow_dispatch:          # the "Run workflow" button
+  push:
+    branches: [main]
+    paths: ["sql/**"]         # also run whenever a .sql file changes on main
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Apply sql/*.sql
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: uv run python -m core.db

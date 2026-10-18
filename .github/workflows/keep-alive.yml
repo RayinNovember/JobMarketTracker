@@ -1,0 +1,22 @@
+name: Keep database awake
+
+on:
+  schedule:
+    - cron: "43 13 * * 1"     # Mondays 13:43 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --no-dev
+      - name: Ping
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: uv run --no-dev python -m core.db ping
+
+
