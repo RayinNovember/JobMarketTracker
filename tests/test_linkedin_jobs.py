@@ -52,6 +52,19 @@ def test_repost_shares_content_hash():
     r = {x["job_id"]: x for x in rows}
     assert r["4100000002"]["content_hash"] == r["4100000003"]["content_hash"]
     assert r["4100000001"]["content_hash"] != r["4100000002"]["content_hash"]
+    assert r["4100000002"]["job_hash"] == r["4100000003"]["job_hash"]
+
+
+def other_city(item, job_id, location):
+    """The same role posted again for another city: new job ID, new location, same text."""
+    return {**item, "id": job_id, "location": location}
+
+
+def test_multi_city_shares_job_hash_only():
+    _, rows = rows_for([ITEMS[0], other_city(ITEMS[0], "4100000009", "Chicago, IL")])
+    a, b = rows
+    assert a["job_hash"] == b["job_hash"]
+    assert a["content_hash"] != b["content_hash"]  # still distinct postings for repost tracking
 
 
 def test_merge_across_searches():
@@ -114,6 +127,27 @@ def test_monthly_runs_dedupe():
         assert load.upsert_postings(conn, run2, rows, date(2026, 11, 1)) == 0
         conn.commit()
         assert conn.execute("select times_seen from jobs.postings where job_id='4100000002'").fetchone()[0] == 2
+
+        # Month 3: job 1 posted again for two more cities collapses into one role
+        run3 = runlog.start_run(conn, "linkedin_jobs", {})
+        merged, rows = rows_for([other_city(ITEMS[0], "4100000010", "Chicago, IL"),
+                                 other_city(ITEMS[0], "4100000011", "Austin, TX")])
+        assert load.upsert_postings(conn, run3, rows, date(2026, 12, 1)) == 2
+        conn.commit()
+        assert conn.execute("select count(*) from jobs.postings").fetchone()[0] == 5
+        j1 = conn.execute(
+            "select job_id, repost_count, location_count, locations, role_first_seen_at, role_last_seen_at"
+            " from jobs.postings_dedup where company_name = 'Example Health'"
+        ).fetchall()
+        assert j1 == [("4100000001", 3, 3, ["Austin, TX", "Chicago, IL", "Columbus, OH"],
+                       date(2026, 10, 1), date(2026, 12, 1))]
+        assert conn.execute("select count(*) from jobs.postings_dedup").fetchone()[0] == 2
+
+        # Rows loaded before job_hash existed still group (by content_hash) until backfilled
+        conn.execute("update jobs.postings set job_hash = null")
+        assert conn.execute("select count(*) from jobs.postings_dedup").fetchone()[0] == 4
+        assert load.rehash_all(conn) == 5
+        assert conn.execute("select count(*) from jobs.postings_dedup").fetchone()[0] == 2
 
 
 class FakeRun:

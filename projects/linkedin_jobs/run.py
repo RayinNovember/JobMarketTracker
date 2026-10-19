@@ -5,6 +5,7 @@ Usage:
     uv run python -m projects.linkedin_jobs.run --limit 25           # small, cheap run
     uv run python -m projects.linkedin_jobs.run --searches "data scientist" --limit 25
     uv run python -m projects.linkedin_jobs.run --retag              # re-apply themes.yaml
+    uv run python -m projects.linkedin_jobs.run --rehash             # backfill job_hash
 """
 
 import argparse
@@ -27,6 +28,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     ap.add_argument('--limit',type=int,help='max jobs persearch (overriades config.yaml)')
     ap.add_argument("--searches", help="comma-separated search terms (overrides config.yaml)")
     ap.add_argument("--retag", action="store_true", help="re-tag stored postings with themes.yaml, then stop")
+    ap.add_argument("--rehash", action="store_true", help="recompute job_hash for stored postings, then stop")
     return ap.parse_args(argv)
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,7 +41,13 @@ def main(argv: list[str] | None = None) -> int:
             n = load.retag_all(conn, tagger)
         print(f"Re-tagged {n} postings with themes.yaml")
         return 0
-    
+
+    if args.rehash:
+        with db.connect() as conn:
+            n = load.rehash_all(conn)
+        print(f"Recomputed job_hash for {n} postings")
+        return 0
+
     searches = [s.strip() for s in args.searches.split(",")] if args.searches else cfg["searches"]
     limit = args.limit or cfg["limit_per_search"]
     params = {"searches": searches, "limit_per_search": limit,"location": cfg["location"], "date_posted": cfg["date_posted"]}

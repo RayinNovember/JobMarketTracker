@@ -5,11 +5,13 @@ from datetime import date
 import psycopg
 from psycopg.types.json import Jsonb
 
+from core.text import content_hash
+
 COLUMNS = [
     "job_id", "title", "company_name", "company_url", "company_employees", "location",
     "industries", "primary_industry", "seniority_level", "employment_type", "job_function",
     "workplace_type", "salary_min", "salary_max", "salary_period", "posted_at",
-    "applicants_count", "link", "description_text", "content_hash", "themes", "search_terms",
+    "applicants_count", "link", "description_text", "content_hash", "job_hash", "themes", "search_terms",
 ]
 
 # Fields refreshed from the latest scrape when a job is seen again.
@@ -66,6 +68,18 @@ def retag_all(conn: psycopg.Connection, tagger) -> int:
         cur.executemany(
             "update jobs.postings set themes = %s where job_id = %s",
             [(tagger.tag(f"{t or ''}\n{d or ''}"), jid) for jid, t, d in rows],
+        )
+    conn.commit()
+    return len(rows)
+
+
+def rehash_all(conn: psycopg.Connection) -> int:
+    """Recompute job_hash for every stored posting (backfills rows loaded before it existed)."""
+    rows = conn.execute("select job_id, company_name, title, description_text from jobs.postings").fetchall()
+    with conn.cursor() as cur:
+        cur.executemany(
+            "update jobs.postings set job_hash = %s where job_id = %s",
+            [(content_hash(c, t, d), jid) for jid, c, t, d in rows],
         )
     conn.commit()
     return len(rows)

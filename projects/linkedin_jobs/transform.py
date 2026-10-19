@@ -95,6 +95,7 @@ def to_row(item: dict, search_terms: list[str], tagger: ThemeTagger) -> dict:
         "link": item.get("link"),
         "description_text": desc or None,
         "content_hash": content_hash(item.get("companyName"), item.get("title"), item.get("location"), desc),
+        "job_hash": content_hash(item.get("companyName"), item.get("title"), desc),
         "themes": tagger.tag(f"{item.get('title') or ''}\n{desc}"),
         "search_terms": sorted(set(search_terms)),
     }
