@@ -3495,18 +3495,238 @@ Themes (Modules 3 and 10) answer "what kind of work is this?". This module answe
 
 The dashboard gets a tab for each category, with your gaps highlighted, plus a list of **emerging skills**: ones employers ask for that aren't on your list yet.
 
-This module builds on Module 10: you need its API key (10.1), the `anthropic` package (10.2) and `core/llm_tagger.py` (10.4), whose model and price constants it reuses. Allow about 2 hours. It costs about $0.15 to discover the skill list, about $2 to tag 5,000 postings you already have, and about $2 a month after that (see 12.8).
+**Before you start.** You need an Anthropic API key in `.env` (10.1) and the `anthropic` package (10.2). Nothing else from Module 10 is required: this module defines its own model and price constants. The dashboard section (12.8) needs Module 11; skip it if you haven't built the dashboard. Allow about 2 hours. It costs about $0.15 to discover the skill list, about $2 to tag 5,000 postings you already have, and about $2 a month after that (see 12.9).
 
-### 12.1 Why two passes
+**How this module is ordered.** Earlier modules mostly show code in the order Python needs it: a thing is defined before anything uses it. That's the right order for typing code in, but not for understanding it, because nobody designs that way. You start from the answer you want and work backwards, and each piece exists because something after it needs it. So this module starts with the design (12.1 and 12.2), then builds the pieces in the order the design asks for them: first where the answer is stored, then what fills it, then what that needs.
 
-You can't hand all 5,000 postings to the LLM and ask for statistics. They don't fit in one request (about 5 million tokens), and even when text fits, a model's sense of "most postings ask for X" is an impression, not a count. So, as in Module 10, the LLM reads **one posting at a time**, and **SQL does the counting**.
+### 12.1 The design, worked backwards from the goal
 
-That raises a naming problem. Asked freely, the LLM calls the same skill "stakeholder management" in one posting and "working with business partners" in the next, and you can't count those together. The fix is two passes:
+Here is the chain of reasoning, one question at a time.
 
-1. **Discover** (once, then every few months): the LLM reads a sample of about 500 postings freely, and one more request groups the thousands of raw phrases into a list of 40 to 60 named skills. **You review the list** and save it as `skills.yaml`.
-2. **Tag** (every posting, then new ones each month): the LLM picks skills only from `skills.yaml`, and marks each as required or preferred. Anything new goes into a separate "other skills" list, which is where emerging skills come from.
+1. **The goal.** "What percentage of data roles ask for each skill, by category?" That's a count, and SQL is good at counting.
+2. **What do you count?** A table with **one row per posting per skill it asks for**: `jobs.posting_skills`. Each skill's category is stored once, in `jobs.skills`. (12.3)
+3. **What fills that table?** Something that reads one posting and answers `{"SQL": "required", "Mentoring": "preferred"}`. An LLM can read; a keyword list can't tell "SQL required" from "no SQL needed". That's `SkillTagger`. (12.4b)
+4. **Why not let the LLM name skills freely?** Because it calls the same skill "stakeholder management" in one posting and "working with business partners" in the next, and you can't count those together. Names must be identical across postings, so the tagger must **choose from a fixed list**: `skills.yaml`.
+5. **Where does the list come from?** You don't know which skills exist until you read the postings. So a first pass reads a sample of about 500 postings and names skills freely (`extract_open`), Python counts how often each phrase appears (`Counter`), and one more request merges the phrases into 40 to 60 named skills (`build_list`). You review that draft and save it as `skills.yaml`. (12.4c) This first pass exists only to produce the list the second pass needs.
+6. **How does code read the LLM's answers?** Every request carries a **JSON schema**, so the reply is always valid JSON in a known shape. Pass 1's schemas are *open* (any skill name allowed); Pass 2's is *closed* (only names from `skills.yaml`).
+7. **The three kinds of request share the same settings** (model, effort, thinking off, cost tracking). Rather than repeat them three times, one small class, `Claude`, holds them. (12.4a) In design terms this is a tidy-up you'd make last, after noticing the repetition.
+8. **Something has to run it all**: two scripts, `skill_discover.py` (Pass 1, 12.5) and `skill_tag.py` (Pass 2, 12.6).
 
-### 12.2 The skills code: `core/skills.py`
+Why not skip all this and hand the 5,000 postings to the LLM in one request? They don't fit (about 5 million tokens), and even when text fits, a model's sense of "most postings ask for X" is an impression, not a count. So the LLM reads **one posting at a time**, and **SQL does the counting**.
+
+The same chain as a picture. Read it from the top: each box exists because the box above it needs it. The dotted lines are shared support used by every request.
+
+```mermaid
+flowchart TB
+    Q["Step 1: The goal<br/>% of roles asking for each skill, by category"]
+    T["Step 2: Tables to count<br/>jobs.skills + jobs.posting_skills"]
+    ST["Step 3: SkillTagger<br/>reads one posting, picks skills from a fixed list"]
+    Y["Step 4: skills.yaml<br/>the fixed list, reviewed by you"]
+    BL["Step 5: build_list<br/>merges phrases into 40 to 60 skills"]
+    C["Counter<br/>how many postings used each phrase"]
+    EO["extract_open<br/>names skills freely in one posting"]
+    CL["Step 7: Claude<br/>one request + cost tracking"]
+    S["Step 6: JSON schemas<br/>every reply is readable JSON"]
+
+    Q -->|"answered by counting rows in"| T
+    T -->|"filled by"| ST
+    ST -->|"chooses only from"| Y
+    Y -->|"drafted by"| BL
+    BL -->|"reads"| C
+    C -->|"counts the output of"| EO
+    ST -.->|"asks through"| CL
+    BL -.->|"asks through"| CL
+    EO -.->|"asks through"| CL
+    CL -.->|"sends with each request"| S
+```
+
+Every piece, with why it exists and what uses it:
+
+| Piece | Kind | Why it exists | Used by |
+| --- | --- | --- | --- |
+| `jobs.skills` | Table | Stores each skill's category once | `jobs.role_skills`, statistics |
+| `jobs.posting_skills` | Table | One row per posting per skill: the thing you count | `jobs.role_skills`, statistics |
+| `jobs.postings.other_skills` | Column | Skills outside your list (emerging skills); `NULL` also means "not tagged yet" | `skill_tag.py`, emerging-skills query |
+| `jobs.role_skills` | View | Joins the above, with reposts collapsed | Statistics, dashboard |
+| `SkillTagger` | Class | Tags one posting against the fixed list | `skill_tag.py` |
+| `skills.yaml` | File | The fixed list, with categories and definitions | `SkillTagger`, `sync_skills` |
+| `build_list` | Function | Turns counted phrases into a draft list | `skill_discover.py` |
+| `Counter` | Python built-in | Counts phrases across the sample | `skill_discover.py`, `build_list` |
+| `extract_open` | Function | Names skills freely in one posting | `skill_discover.py` |
+| `OPEN_SCHEMA`, `LIST_SCHEMA`, `SkillTagger.schema` | JSON schemas | Force each reply into a shape code can read | `extract_open`, `build_list`, `SkillTagger` |
+| `Claude` | Class | Shared request settings, JSON parsing and cost | `extract_open`, `build_list`, `SkillTagger` |
+| Constants (`MODEL`, prices, `CATEGORIES`, prompt text) | Values | One place to change shared settings | Everything in `core/skills.py`, the dashboard |
+| `skill_discover.py` | Script | Runs Pass 1 and writes the draft | You, every few months |
+| `skill_tag.py` | Script | Runs Pass 2 and writes the tables | You, then GitHub Actions monthly |
+
+### 12.2 How the pieces connect
+
+The pieces live in different files. As in the rest of the project, `core/` holds **tools** (classes and functions that don't run anything themselves), and `projects/linkedin_jobs/` holds **scripts** that import the tools and run them. Here is who uses what:
+
+```mermaid
+flowchart LR
+    subgraph lib["core/skills.py: the tools"]
+        K["constants<br/>MODEL, prices, CATEGORIES"]
+        CL["Claude"]
+        EO["extract_open"]
+        BL["build_list"]
+        ST["SkillTagger"]
+    end
+
+    subgraph scripts["projects/linkedin_jobs/: the scripts"]
+        SD["skill_discover.py"]
+        STG["skill_tag.py"]
+    end
+
+    Y["skills.yaml"]
+
+    subgraph db["Postgres: sql/040_skills.sql"]
+        JS[("jobs.skills")]
+        PS[("jobs.posting_skills")]
+        OS[("jobs.postings.other_skills")]
+        RS[("view: jobs.role_skills")]
+    end
+
+    subgraph dash["Dashboard: needs Module 11"]
+        SQ["skill_queries.py"]
+        AS["app_skills.py"]
+        APP["app.py"]
+    end
+
+    TS["tests/test_skills.py"]
+
+    EO -.->|"calls"| CL
+    BL -.->|"calls"| CL
+    ST -.->|"calls"| CL
+    SD -->|"imports"| CL
+    SD -->|"imports"| EO
+    SD -->|"imports"| BL
+    SD -->|"writes a draft;<br/>you review it into"| Y
+    Y -->|"read by"| STG
+    STG -->|"imports"| ST
+    STG -->|"writes"| JS
+    STG -->|"writes"| PS
+    STG -->|"writes"| OS
+    JS --> RS
+    PS --> RS
+    RS --> SQ
+    OS --> SQ
+    SQ --> AS
+    AS -->|"imports CATEGORIES"| K
+    AS --> APP
+    TS -.->|"tests with a fake client"| lib
+```
+
+And here is what happens to the data when you run it, in time order. Pass 1 runs once (and again every few months); Pass 2 runs on every posting, then on new postings each month. The dotted line is the loop that keeps the list current (12.10).
+
+```mermaid
+flowchart TB
+    subgraph p1["Pass 1: discover the list (skill_discover.py)"]
+        D1[("jobs.postings_dedup<br/>random sample of 500")] --> D2["extract_open<br/>1 request per posting"]
+        D2 -->|"free phrases + categories"| D3["Counter<br/>each phrase counted once per posting"]
+        D3 -->|"400 most common phrases"| D4["build_list<br/>1 request"]
+        D4 --> D5["skills_draft.yaml"]
+        D5 --> D6{{"You review:<br/>merge, split, recategorize, define"}}
+        D6 --> D7["skills.yaml"]
+    end
+
+    subgraph p2["Pass 2: tag every posting (skill_tag.py)"]
+        T0["sync_skills"] --> T5[("jobs.skills")]
+        T1[("jobs.postings<br/>where other_skills is null")] --> T2["SkillTagger.tag<br/>1 request per posting"]
+        T2 -->|"skills on the list + level"| T3[("jobs.posting_skills")]
+        T2 -->|"skills not on the list"| T4[("jobs.postings.other_skills")]
+    end
+
+    D7 --> T0
+    D7 --> T2
+    T3 --> R[("jobs.role_skills")]
+    T5 --> R
+    R --> OUT["Statistics (12.7) and dashboard (12.8)"]
+    T4 --> EM["Emerging skills"]
+    EM -.->|"add the real ones to the list, then --retag"| D7
+```
+
+> **Seeing the diagrams.** GitHub draws these automatically. In VS Code, install the free **Markdown Preview Mermaid Support** extension, then open the preview (Ctrl+Shift+V). Anywhere else they appear as text, which still reads top to bottom.
+
+### 12.3 Where the answer lives: the tables (`sql/040_skills.sql`)
+
+Start at the end of the chain: the tables the counting runs on. Everything else in this module exists to fill them.
+
+**Add a column first.** In `sql/010_linkedin_jobs.sql`, just before the first `create index` (right below Module 10's `themes_llm` line, if you built Module 10), add:
+
+```sql
+-- Module 12: skills found outside skills.yaml. NULL = skills not extracted yet.
+alter table jobs.postings add column if not exists other_skills text[];
+```
+
+It goes in `010`, not in the new file, because the views select `p.*`, and a column added after the views are built would be missing from them until the next migration.
+
+Then create `sql/040_skills.sql`:
+
+```sql
+-- Module 12: skills by category. (The other_skills column on jobs.postings is added in
+-- 010_linkedin_jobs.sql, before the views that select p.*, so the views include it.)
+
+-- The skill list, copied from skills.yaml on every tagging run. Each skill's category lives here, once.
+create table if not exists jobs.skills (
+    skill      text primary key,
+    category   text not null check (category in ('technical', 'communication', 'business', 'leadership')),
+    definition text
+);
+
+-- One row per posting per skill it asks for.
+create table if not exists jobs.posting_skills (
+    job_id text not null references jobs.postings (job_id),
+    skill  text not null references jobs.skills (skill),
+    level  text not null check (level in ('required', 'preferred')),
+    primary key (job_id, skill)
+);
+
+create index if not exists posting_skills_skill_idx on jobs.posting_skills (skill);
+
+-- Skills per role (reposts collapsed), with the category attached. 010 drops this view
+-- (cascade) whenever it rebuilds postings_dedup, so it is recreated here every time.
+create or replace view jobs.role_skills as
+select p.job_id, p.primary_industry, p.seniority_level, s.category, ps.skill, ps.level
+from jobs.postings_dedup p
+join jobs.posting_skills ps on ps.job_id = p.job_id
+join jobs.skills s on s.skill = ps.skill;
+```
+
+This is a **dimension and fact** design, as in a Power BI model:
+
+- `jobs.skills` is the dimension: one row per skill, holding its **category**. The category lives here once, not on every posting.
+- `jobs.posting_skills` is the fact table: one row per posting per skill it asks for, with the level. Its primary key `(job_id, skill)` stops a skill being counted twice for one posting.
+- The `references` clauses are foreign keys: Postgres refuses a `posting_skills` row for a job or skill that doesn't exist.
+- `check (category in (...))` refuses any other category, so a typo in `skills.yaml` fails loudly instead of creating a fifth category.
+- `jobs.role_skills` joins the three: one row per role per skill, with the category attached, and reposts collapsed through `postings_dedup`.
+
+Because the category sits in `jobs.skills`, recategorizing is cheap: change one line in `skills.yaml`, and the next tagging run updates `jobs.skills`. Every chart follows, and nothing is re-tagged.
+
+If you built the dashboard (Module 11), this is also why its grants file is numbered `900`: it runs after `040`, so the read-only user can read the new tables and view.
+
+Apply it:
+
+```bash
+uv run python -m core.db
+```
+
+**Checkpoint:** in the SQL Editor, `select * from jobs.skills;` returns no rows and no error. The tables are ready; the next section builds what fills them.
+
+### 12.4 The tools: `core/skills.py`
+
+This file holds every tool both passes use. It has no `main()` and runs nothing on its own; the scripts in 12.5 and 12.6 import from it. You'll build it in three pieces:
+
+- **12.4a Shared setup:** constants and the `Claude` class that every request goes through.
+- **12.4b Pass 2, the tagger:** `SkillTagger`, the piece that fills the tables from 12.3.
+- **12.4c Pass 1, discovery:** `extract_open` and `build_list`, which produce the `skills.yaml` the tagger needs.
+
+The design order is 12.4b → 12.4c → 12.4a (the tagger is what you need; discovery serves it; the shared class is a tidy-up). The file is written 12.4a first because Python needs a name defined before code that uses it is defined: `SkillTagger` mentions `Claude` in its arguments, so `Claude` has to come first.
+
+#### 12.4a Shared setup: constants and `Claude`
+
+**Why it exists:** all three kinds of request (tag one posting, extract from one posting, build the list) use the same model, the same "thinking off, JSON reply" settings, and the same cost bookkeeping. Writing that once avoids three copies that could drift apart.
+**Used by:** `SkillTagger` (12.4b), `extract_open` and `build_list` (12.4c); `CATEGORIES` also by the dashboard (12.8).
 
 Create `core/skills.py`:
 
@@ -3520,7 +3740,14 @@ import anthropic
 import yaml
 
 from core import settings
-from core.llm_tagger import MAX_TEXT_CHARS, MODEL, PRICE_IN, PRICE_OUT
+
+
+# LLM model constants and limits
+MODEL = "claude-haiku-5-5"
+# USD per million tokens for MODEL, for prompts under 100K tokens (October 2026 prices).
+PRICE_IN = 0.10
+PRICE_OUT = 0.50
+MAX_TEXT_CHARS = 8000  # long descriptions are cut here to cap the cost per job
 
 CATEGORIES = ["technical", "communication", "business", "leadership"]
 LEVELS = ["required", "preferred"]
@@ -3564,77 +3791,32 @@ class Claude:
     @property
     def cost_usd(self) -> float:
         return self.input_tokens / 1e6 * PRICE_IN + self.output_tokens / 1e6 * PRICE_OUT
+```
 
+**The constants.**
 
-# ---------- Pass 1: discover the skill list ----------
+- `MODEL`, the two prices and `MAX_TEXT_CHARS` are the values most likely to change: a newer model, a price change, a different cost cap. Keeping them at the top makes that a one-line edit. `claude-haiku-5-5` is the smallest, cheapest current model, built for high-volume classification. Check the [pricing page](https://platform.claude.com/docs/en/about-claude/pricing) before relying on the prices.
+- `CATEGORIES` and `LEVELS` are the only values allowed; the JSON schemas use them as `enum`s, so the model can't invent a fifth category.
+- `CATEGORY_HELP` and `IGNORE` are prompt text shared by both passes. `IGNORE` matters for postings like DoorDash's, where two-thirds of the text is benefits and legal notices.
 
-OPEN_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "skills": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {"name": {"type": "string"}, "category": {"type": "string", "enum": CATEGORIES}},
-                "required": ["name", "category"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    "required": ["skills"],
-    "additionalProperties": False,
-}
+**`Claude`** wraps one request and the token bookkeeping.
 
-LIST_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "skills": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "skill": {"type": "string"},
-                    "category": {"type": "string", "enum": CATEGORIES},
-                    "definition": {"type": "string"},
-                },
-                "required": ["skill", "category", "definition"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    "required": ["skills"],
-    "additionalProperties": False,
-}
+- `client or anthropic.Anthropic(...)` uses a client you pass in, or creates a real one with your key. Being able to pass one in is what lets the tests use a fake (12.9).
+- `ask(...)` sends one request and returns the parsed JSON. The `*` in `def ask(self, *, system, ...)` makes every argument after it **keyword-only**: you must write `ask(system=..., content=...)`, which keeps calls with several similar strings readable and hard to mix up.
+- `output_config` sets two things: `effort` (how much work the model puts into an answer; `low` is plenty for tagging) and `format`, which turns on **structured outputs**: the reply is guaranteed to be valid JSON matching `schema`. Which schema depends on the caller; `Claude` itself has none.
+- `thinking={"type": "disabled"}` skips the model's reasoning step. Thinking tokens are billed as output, and picking from a list doesn't need it.
+- `response.content` is a list of blocks; `next(... if block.type == "text")` takes the first text block, which holds the JSON, and `json.loads` turns it into a `dict`.
+- `cost_usd` is a **property**: a method you read like an attribute, `claude.cost_usd`, without brackets. It's calculated from the token totals each time you read it, so it's always current without being stored.
 
+#### 12.4b Pass 2, the tagger: `SkillTagger`
 
-def extract_open(claude: Claude, text: str) -> list[dict]:
-    """Every skill a posting asks for, in short words of the model's choosing."""
-    if not text:
-        return []
-    system = (
-        "You extract skills from job postings for a labor-market analysis. List every skill the "
-        "posting asks for, as a short noun phrase (2 to 6 words), with its category. Include "
-        f"non-technical skills as well as technical ones. {IGNORE}\n\n{CATEGORY_HELP}"
-    )
-    reply = claude.ask(system=system, content=text[:MAX_TEXT_CHARS], schema=OPEN_SCHEMA, max_tokens=800)
-    return reply["skills"]
+**Why it exists:** it's what fills `jobs.posting_skills` (12.3). It reads one posting and returns the skills it asks for, chosen **only** from `skills.yaml`, so the same skill always has the same name and SQL can count it.
+**Uses:** `Claude` and the constants (12.4a), and a `skills.yaml` that Pass 1 (12.4c) produces.
+**Used by:** `skill_tag.py` (12.6).
 
+Add below the `Claude` class:
 
-def build_list(claude: Claude, counts: Counter, size: str = "40 to 60") -> list[dict]:
-    """Group raw phrases (with how often each appeared) into one list of named, categorized skills."""
-    lines = "\n".join(f"{n} | {category} | {phrase}" for (phrase, category), n in counts.most_common(400))
-    system = (
-        "You design a skill taxonomy for a labor-market analysis of data jobs. You get skill phrases "
-        "extracted from job postings, with how many postings used each. Merge phrases that mean the "
-        f"same thing into one skill, and return a list of {size} skills that covers the frequent "
-        "phrases. Give each skill a clear name (2 to 6 words), one category, and a one-sentence "
-        "definition that says what counts as this skill.\n\n" + CATEGORY_HELP
-    )
-    reply = claude.ask(system=system, content="count | category | phrase\n" + lines,
-                       schema=LIST_SCHEMA, max_tokens=8000, effort="medium")
-    return reply["skills"]
-
-
+```python
 # ---------- Pass 2: tag postings against the list ----------
 
 class SkillTagger:
@@ -3703,23 +3885,103 @@ class SkillTagger:
         return found, other[:MAX_OTHER]
 ```
 
-**The constants.** `CATEGORIES` and `LEVELS` are the only values allowed; the JSON schemas below use them as `enum`s, so the model can't invent a fifth category. `CATEGORY_HELP` and `IGNORE` are prompt text shared by both passes. `IGNORE` matters for postings like DoorDash's, where two-thirds of the text is benefits and legal notices.
-
-**`Claude`** wraps the request settings from Module 10 (Haiku, low effort, thinking off, a JSON schema) and the token bookkeeping, so the three kinds of request below don't each repeat them. `ask(...)` sends one request and returns the parsed JSON. The `*` in `def ask(self, *, system, ...)` makes every argument after it **keyword-only**: you must write `ask(system=..., content=...)`, which keeps calls with several similar strings readable and hard to mix up.
-
-**Pass 1: `extract_open` and `build_list`.**
-
-- `OPEN_SCHEMA` asks for a list of `{name, category}` objects. The name is free text; only the category is fixed.
-- `build_list` sends the phrases with their counts, one per line (`7 | communication | stakeholder management`), and asks for a merged list. `counts.most_common(400)` sends the 400 most frequent: rare phrases add tokens without changing the list. `effort="medium"` gives this one harder request a little more thought; it runs once, so the extra cost is a fraction of a cent.
-
-**Pass 2: `SkillTagger`.**
-
 - `__init__` builds the system prompt from `skills.yaml`, grouped by category with each skill's definition. The definitions are what make tagging consistent: "Presenting to leadership: explaining results and recommendations to senior stakeholders" tells the model where the line is.
-- The schema has two keys. `skills` is a list of `{skill, level}` objects, where `skill` must be one of your names (`"enum": self.names`) and `level` must be `required` or `preferred`. `other_skills` is free text, for skills outside the list.
+- The schema is **closed**. `skills` is a list of `{skill, level}` objects, where `skill` must be one of your names (`"enum": self.names`) and `level` must be `required` or `preferred`. `other_skills` is free text, for skills outside the list. It's built here rather than as a constant at the top because the names aren't known until `skills.yaml` is loaded.
 - `tag()` cleans the reply. `known` maps lowercase names to your exact names, so capitalization doesn't matter. If the model lists a skill twice, `required` wins. Other skills are lowercased, with extra spaces squeezed out (`" ".join(phrase.split())`), duplicates and already-listed skills dropped, and at most five kept. Lowercasing is what lets SQL count "Causal ML" and "causal ML" as one.
 - It returns a tuple: a dict like `{"SQL": "required", "Mentoring": "preferred"}` and a list like `["marketplace analytics"]`.
 
-### 12.3 Discover your skill list
+At this point the tagger can't run: it needs a `skills.yaml`, and you don't have one. That's the job of Pass 1.
+
+#### 12.4c Pass 1, discovery: `extract_open` and `build_list`
+
+**Why it exists:** to produce the first draft of `skills.yaml` for the tagger. It's needed once, then again every few months to catch shifts.
+**Uses:** `Claude`, `CATEGORIES`, `CATEGORY_HELP`, `IGNORE` and `MAX_TEXT_CHARS` (12.4a).
+**Used by:** `skill_discover.py` (12.5), which also does the counting between the two functions.
+
+Add at the end of the file:
+
+```python
+# ---------- Pass 1: discover the skill list ----------
+
+OPEN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "skills": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "category": {"type": "string", "enum": CATEGORIES}},
+                "required": ["name", "category"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["skills"],
+    "additionalProperties": False,
+}
+
+LIST_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "skills": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "skill": {"type": "string"},
+                    "category": {"type": "string", "enum": CATEGORIES},
+                    "definition": {"type": "string"},
+                },
+                "required": ["skill", "category", "definition"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["skills"],
+    "additionalProperties": False,
+}
+
+
+def extract_open(claude: Claude, text: str) -> list[dict]:
+    """Every skill a posting asks for, in short words of the model's choosing."""
+    if not text:
+        return []
+    system = (
+        "You extract skills from job postings for a labor-market analysis. List every skill the "
+        "posting asks for, as a short noun phrase (2 to 6 words), with its category. Include "
+        f"non-technical skills as well as technical ones. {IGNORE}\n\n{CATEGORY_HELP}"
+    )
+    reply = claude.ask(system=system, content=text[:MAX_TEXT_CHARS], schema=OPEN_SCHEMA, max_tokens=800)
+    return reply["skills"]
+
+
+def build_list(claude: Claude, counts: Counter, size: str = "40 to 60") -> list[dict]:
+    """Group raw phrases (with how often each appeared) into one list of named, categorized skills."""
+    lines = "\n".join(f"{n} | {category} | {phrase}" for (phrase, category), n in counts.most_common(400))
+    system = (
+        "You design a skill taxonomy for a labor-market analysis of data jobs. You get skill phrases "
+        "extracted from job postings, with how many postings used each. Merge phrases that mean the "
+        f"same thing into one skill, and return a list of {size} skills that covers the frequent "
+        "phrases. Give each skill a clear name (2 to 6 words), one category, and a one-sentence "
+        "definition that says what counts as this skill.\n\n" + CATEGORY_HELP
+    )
+    reply = claude.ask(system=system, content="count | category | phrase\n" + lines,
+                       schema=LIST_SCHEMA, max_tokens=8000, effort="medium")
+    return reply["skills"]
+```
+
+- The two functions are the two halves of discovery. `extract_open` **finds** skills in one posting; `build_list` **merges, names, defines and narrows** them into one list. The counting in between is plain Python, in `skill_discover.py`.
+- `OPEN_SCHEMA` is **open**: `name` is any string, because there's no list yet. Only the category is fixed. Compare the closed schema in `SkillTagger`, where `skill` has an `enum`.
+- `LIST_SCHEMA` is the shape of `skills.yaml` itself: `skill`, `category`, `definition`.
+- `extract_open` asks for short noun phrases ("2 to 6 words"), so you get "SQL" rather than "strong ability to write complex SQL queries", and for non-technical skills too, which the model otherwise underplays. `if not text: return []` skips the request, and its cost, for an empty posting.
+- `build_list` receives a `Counter` keyed by `(phrase, category)` and sends the phrases with their counts, one per line (`7 | communication | stakeholder management`). `counts.most_common(400)` gives the 400 most frequent, highest first: rare phrases add tokens without changing the list. `effort="medium"` gives this one harder request a little more thought, and `max_tokens=8000` leaves room for 60 skills with definitions; it runs once, so the extra cost is a fraction of a cent.
+
+**The finished file**, top to bottom: imports → constants → `Claude` → `SkillTagger` (Pass 2) → schemas, `extract_open` and `build_list` (Pass 1). Run order is the reverse of design order: you'll run Pass 1 next (12.5), then Pass 2 (12.6).
+
+### 12.5 Run Pass 1: draft your skill list (`skill_discover.py`)
+
+**Uses:** `Claude`, `extract_open` and `build_list` from `core/skills.py` (12.4), plus Python's `Counter`.
+**Produces:** `skills_draft.yaml`, which you review and save as `skills.yaml`, the list Pass 2 (12.6) tags against.
 
 Create `projects/linkedin_jobs/skill_discover.py`:
 
@@ -3836,68 +4098,10 @@ uv run python -m projects.linkedin_jobs.skill_discover
 
 Save the result as `projects/linkedin_jobs/skills.yaml` and commit it. Delete the draft.
 
-### 12.4 The tables: `sql/040_skills.sql`
+### 12.6 Run Pass 2: tag your postings (`skill_tag.py`)
 
-**Add a column first.** In `sql/010_linkedin_jobs.sql`, right below Module 10's `themes_llm` line, add:
-
-```sql
--- Module 12: skills found outside skills.yaml. NULL = skills not extracted yet.
-alter table jobs.postings add column if not exists other_skills text[];
-```
-
-It goes in `010`, not in the new file, for the same reason as `themes_llm`: the views select `p.*`, and a column added after the views are built would be missing from them until the next migration.
-
-Then create `sql/040_skills.sql`:
-
-```sql
--- Module 12: skills by category. (The other_skills column on jobs.postings is added in
--- 010_linkedin_jobs.sql, before the views that select p.*, so the views include it.)
-
--- The skill list, copied from skills.yaml on every tagging run. Each skill's category lives here, once.
-create table if not exists jobs.skills (
-    skill      text primary key,
-    category   text not null check (category in ('technical', 'communication', 'business', 'leadership')),
-    definition text
-);
-
--- One row per posting per skill it asks for.
-create table if not exists jobs.posting_skills (
-    job_id text not null references jobs.postings (job_id),
-    skill  text not null references jobs.skills (skill),
-    level  text not null check (level in ('required', 'preferred')),
-    primary key (job_id, skill)
-);
-
-create index if not exists posting_skills_skill_idx on jobs.posting_skills (skill);
-
--- Skills per role (reposts collapsed), with the category attached. 010 drops this view
--- (cascade) whenever it rebuilds postings_dedup, so it is recreated here every time.
-create or replace view jobs.role_skills as
-select p.job_id, p.primary_industry, p.seniority_level, s.category, ps.skill, ps.level
-from jobs.postings_dedup p
-join jobs.posting_skills ps on ps.job_id = p.job_id
-join jobs.skills s on s.skill = ps.skill;
-```
-
-This is a **dimension and fact** design, as in a Power BI model:
-
-- `jobs.skills` is the dimension: one row per skill, holding its **category**. The category lives here once, not on every posting.
-- `jobs.posting_skills` is the fact table: one row per posting per skill it asks for, with the level. Its primary key `(job_id, skill)` stops a skill being counted twice for one posting.
-- The `references` clauses are foreign keys: Postgres refuses a `posting_skills` row for a job or skill that doesn't exist.
-- `check (category in (...))` refuses any other category, so a typo in `skills.yaml` fails loudly instead of creating a fifth category.
-- `jobs.role_skills` joins the three: one row per role per skill, with the category attached, and reposts collapsed through `postings_dedup`.
-
-Because the category sits in `jobs.skills`, recategorizing is cheap: change one line in `skills.yaml`, and the next tagging run updates `jobs.skills`. Every chart follows, and nothing is re-tagged.
-
-This is also why the dashboard's grants file is numbered `900` (Module 11): it runs after `040`, so the read-only user can read the new tables and view.
-
-Apply it:
-
-```bash
-uv run python -m core.db
-```
-
-### 12.5 Tag your postings: `skill_tag.py`
+**Uses:** `SkillTagger` (12.4b) and your `skills.yaml` (12.5).
+**Produces:** the rows in `jobs.skills`, `jobs.posting_skills` and `jobs.postings.other_skills` (12.3), which the statistics and dashboard read.
 
 Create `projects/linkedin_jobs/skill_tag.py`:
 
@@ -4010,10 +4214,12 @@ if __name__ == "__main__":
 ```
 
 - **`sync_skills`** makes the database match `skills.yaml` at the start of every run. The upsert adds new skills and updates categories and definitions (`excluded.` is the incoming row, as in Module 5). Then `skill <> all(%s)` ("not equal to every name in the list") deletes skills you removed from the YAML, first from `posting_skills` because of the foreign key, then from `skills`.
-- **What's left to tag** is every posting where `other_skills is null`, the same `NULL` means "not yet" pattern as Module 10. Each tagged posting gets a list, even an empty `'{}'`, so it isn't tagged again.
+- **What's left to tag** is every posting where `other_skills is null`: `NULL` means "not tagged yet". Each tagged posting gets a list, even an empty `'{}'`, so it isn't tagged again.
 - **Writing one posting:** delete its old skill rows, insert the new ones with `executemany`, and store `other_skills`. Deleting first is what makes re-tagging safe.
 - **`--retag TEXT`** sets `other_skills` back to `NULL` for postings whose description contains the text (`ilike` is a case-insensitive `like`; `%` matches anything). `--retag-all` does it for every posting. The tagging loop then picks them up as usual.
-- Failures, commits every 50 and the cost line work exactly as in Module 10.
+- `limit %s` with `None` becomes `limit NULL` in SQL, which Postgres reads as "no limit", so `--limit` is optional with no extra code. `order by first_seen_at desc` tags the newest postings first.
+- One failed request (a network blip, a rate limit) is printed and skipped; the posting stays `NULL` and is retried next run. Five failures in a row usually mean something systematic, like a wrong key or empty credit, so the script stops instead of printing thousands of errors.
+- It commits every 50 postings, so a crash halfway keeps the work done so far, and prints the real cost from the token counts Anthropic reports.
 
 **Checkpoint, a small run (about $0.005):**
 
@@ -4037,7 +4243,7 @@ order by p.title, s.category, ps.skill;
 uv run python -m projects.linkedin_jobs.skill_tag
 ```
 
-### 12.6 The statistics
+### 12.7 The statistics
 
 Skill share by category, across everything tagged:
 
@@ -4070,7 +4276,9 @@ order by roles desc
 limit 25;
 ```
 
-### 12.7 On the dashboard
+### 12.8 On the dashboard
+
+This section adds to the Streamlit dashboard from Module 11 (`queries.py`, `app.py`). If you haven't built Module 11, skip to 12.9; the statistics in 12.7 work on their own in the SQL Editor or any BI tool.
 
 Create `projects/linkedin_jobs/skill_queries.py`:
 
@@ -4224,7 +4432,7 @@ app_skills.show(terms, start, end)
 
 **Checkpoint:** run the app (`uv run streamlit run projects/linkedin_jobs/app.py`). Below the themes chart there's a **Skills by category** section with four tabs, and an **Emerging skills** table. If it doesn't appear, the dashboard's 1-hour cache may still say "no skills yet": use ⋮ → **Clear cache**.
 
-### 12.8 Tests, automation and cost
+### 12.9 Tests, automation and cost
 
 Create `tests/fixtures/skills.yaml`, a small list the tests use instead of your real one:
 
@@ -4438,9 +4646,9 @@ def test_skill_discover_writes_a_draft(monkeypatch, tmp_path):
 - The database test runs `skill_tag.main()` for real against the throwaway database, with a fake model. It points the script at a temporary folder with `monkeypatch.setattr(skill_tag, "HERE", tmp_path)`; `tmp_path` is a fresh empty folder pytest creates for each test. It checks the counts and percentages, that reposts are collapsed, that the dashboard section appears, and that recategorizing and deleting skills in the YAML work without re-tagging.
 - `st.cache_data.clear()` empties Streamlit's cache first, since an earlier test may have cached "no skills yet".
 
-**Run in the terminal:** `uv run pytest -v`. **Checkpoint:** `12 passed, 10 skipped` locally; all 22 pass on GitHub.
+**Run in the terminal:** `uv run pytest tests/test_skills.py -v`. **Checkpoint:** `4 passed, 2 skipped` locally; the two database tests run on GitHub, where `TEST_DB_URL` is set. The first one also checks the dashboard, so it needs Module 11; without it, delete the lines from `# The dashboard shows the new section` down to the `at.tabs` assertion.
 
-**Automate it.** `skills.yaml` must be committed, because GitHub's runner only has what's in the repo. Then add this step to the end of `.github/workflows/linkedin-jobs.yml`, after Module 10's step:
+**Automate it.** If you haven't already (10.7), add your key to GitHub: **Settings → Secrets and variables → Actions → New repository secret**, named `ANTHROPIC_API_KEY`. `skills.yaml` must be committed, because GitHub's runner only has what's in the repo. Then add this step to the end of `.github/workflows/linkedin-jobs.yml`, indented to line up with the steps above it (after Module 10's step, if you have it):
 
 ```yaml
       - name: Tag skills
@@ -4450,7 +4658,7 @@ def test_skill_discover_writes_a_draft(monkeypatch, tmp_path):
         run: uv run --no-dev python -m projects.linkedin_jobs.skill_tag
 ```
 
-**What it costs.** Tagging sends the skill list with every posting, so it costs more per posting than Module 10:
+**What it costs.** Tagging sends the skill list with every posting, so most of the input is the same for every posting:
 
 | Part | Tokens per posting |
 | --- | --- |
@@ -4469,7 +4677,7 @@ That's 3,000 × $0.10 / 1M + 300 × $0.50 / 1M ≈ **$0.00045 per posting**:
 | Each month after: ~5,000 new postings | ~$2.25 |
 | Adding a skill and re-tagging the postings that mention it (`--retag`) | Usually a few cents |
 
-As in Module 10, the script prints the real cost. Run `--limit 10` first and scale up from it. If the cost ever matters, the Batch API halves it.
+The script prints the real cost. Run `--limit 10` first and scale up from it. If the cost ever matters, the Batch API halves it.
 
 **Commit:**
 
@@ -4479,7 +4687,7 @@ git commit -m "Module 12: skills by category"
 git push
 ```
 
-### 12.9 When a new skill appears
+### 12.10 When a new skill appears
 
 Nothing new is lost. A skill that isn't on your list lands in `other_skills`, in the posting's own words, and shows up in the dashboard's **Emerging skills** table once three or more roles mention it. When a phrase there looks real and keeps growing:
 
@@ -4500,6 +4708,7 @@ Every few months, re-run `skill_discover` and compare the draft with your list. 
 2. What does `other_skills is null` mean, and how is that different from `'{}'`?
 3. Why does discovery use a random sample from `postings_dedup` rather than the newest postings?
 4. You add "AI agent evaluation" to `skills.yaml`. What two things happen on the next `skill_tag --retag "agent"` run?
+5. `SkillTagger` is what fills the tables. Why is Pass 1 needed at all, and why does it have to run first?
 
 <details>
 <summary>Answers</summary>
@@ -4508,6 +4717,7 @@ Every few months, re-run `skill_discover` and compare the draft with your list. 
 2. `NULL` means the posting hasn't been tagged yet, so the next run will tag it. `'{}'` means it was tagged and asked for nothing beyond your list, so it won't be tagged again.
 3. Random sampling represents the whole period rather than just the latest few days, and `postings_dedup` stops a role reposted several times from counting several times.
 4. `sync_skills` adds the new skill to `jobs.skills`. Then every posting whose description contains "agent" is marked untagged and tagged again against the updated list, so the new skill is counted in past months too.
+5. The tagger may only choose names from `skills.yaml`, so the same skill is always counted under one name. That list can't exist until someone reads the postings, so Pass 1 reads a sample, counts the phrases and drafts it (`extract_open` → `Counter` → `build_list` → your review).
 
 </details>
 
