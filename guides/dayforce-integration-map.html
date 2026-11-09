@@ -1,0 +1,1364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dayforce Integration Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: dark operations-console look. Three hash-routed pages; each opens with an overview map, then a numbered run-order roadmap with findings pinned to the step where they happen. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1317;
+  --surface: #151c22;
+  --raise: #1c252d;
+  --fg: #e3e8eb;
+  --muted: #94a1ab;
+  --line: #2c3842;
+  --accent: #4fc1b4;      /* main pattern */
+  --accent-soft: #12302d;
+  --warm: #e9a35e;        /* write-backs */
+  --warm-soft: #33251a;
+  --cool: #9fb2f5;        /* webhook */
+  --cool-soft: #1d2440;
+  --bad: #f2776b;
+  --bad-soft: #3a1c1a;
+  --warn: #e8c46a;
+  --warn-soft: #33291a;
+  --ok: #72cf98;
+  --ok-soft: #16301f;
+  --a1: #e9a35e; --a1-soft: #33251a;      /* timeline: user sync */
+  --a2: #4fc1b4; --a2-soft: #12302d;      /* timeline: requisitions / locations */
+  --a3: #9fb2f5; --a3-soft: #1d2440;      /* timeline: candidates */
+  --infra: #c9b26a; --infra-soft: #2e2918; /* timeline: VM, secrets, Dayforce */
+  --inv: #72cf98; --inv-soft: #16301f;    /* timeline: investigation */
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body);
+  font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 36px 64px;
+}
+main { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; letter-spacing: .005em; }
+h1 { font-size: 34px; line-height: 1.1; }
+h2 { font-size: 23px; line-height: 1.2; }
+h3 { font-size: 17px; line-height: 1.25; }
+p { margin: 0; }
+code, .mono { font-family: var(--font-mono); font-size: .88em; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+header.top { display: flex; flex-direction: column; gap: 10px; }
+.eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); font-size: 16px; max-width: 72ch; }
+
+/* status strip */
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat b { font-family: var(--font-display); font-size: 16px; }
+.stat span { color: var(--muted); font-size: 13px; }
+
+/* tabs */
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); }
+nav.tabs a { text-decoration: none; color: var(--muted); padding: 10px 14px 11px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: baseline; font-weight: 600; margin-bottom: -1px; }
+nav.tabs a .n { font-family: var(--font-mono); font-size: 12px; }
+nav.tabs a:hover { color: var(--fg); }
+nav.tabs a[aria-current="page"] { color: var(--fg); background: var(--surface); border-color: var(--line); border-bottom: 1px solid var(--surface); }
+nav.tabs a[data-k="ingest"][aria-current="page"] .n { color: var(--accent); }
+nav.tabs a[data-k="writebacks"][aria-current="page"] .n { color: var(--warm); }
+nav.tabs a[data-k="webhook"][aria-current="page"] .n { color: var(--cool); }
+nav.tabs a[data-k="timeline"][aria-current="page"] .n { color: var(--bad); }
+nav.tabs a[data-k="issues"][aria-current="page"] .n { color: var(--warn); }
+
+.page { display: flex; flex-direction: column; gap: 36px; }
+.page > section { display: flex; flex-direction: column; gap: 14px; }
+.intro { display: flex; flex-direction: column; gap: 8px; max-width: 76ch; }
+.intro p { color: var(--muted); }
+.k-main { color: var(--accent); } .k-back { color: var(--warm); } .k-solo { color: var(--cool); }
+
+/* figures */
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.scroll svg { display: block; width: 100%; min-width: 760px; height: auto; }
+figcaption { color: var(--muted); font-size: 13.5px; max-width: 80ch; }
+
+/* roadmap */
+ol.road { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+ol.road > li { display: grid; grid-template-columns: 44px 1fr; column-gap: 14px; position: relative; padding-bottom: 18px; }
+ol.road > li::before { content: ""; position: absolute; left: 21px; top: 30px; bottom: 0; width: 2px; background: var(--line); }
+ol.road > li:last-child::before { display: none; }
+.num { width: 44px; height: 30px; border-radius: 6px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 12.5px; background: var(--raise); border: 1px solid var(--line); color: var(--muted); position: relative; z-index: 1; }
+.road.main .num { color: var(--accent); }
+.road.back .num { color: var(--warm); }
+.road.solo .num { color: var(--cool); }
+.num.bad { border-color: var(--bad); color: var(--bad) !important; background: var(--bad-soft); }
+.num.warn { border-color: var(--warn); color: var(--warn) !important; background: var(--warn-soft); }
+.num.dim { border-style: dashed; }
+.body { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-top: 3px; }
+.body .what { font-weight: 600; }
+.body .detail { color: var(--muted); font-size: 14px; max-width: 78ch; }
+.tables { display: flex; flex-wrap: wrap; gap: 6px; }
+.tbl { font-family: var(--font-mono); font-size: 11.5px; padding: 2px 8px; border-radius: 4px; background: var(--raise); border: 1px solid var(--line); color: var(--fg); }
+
+/* finding callouts */
+.finding { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; max-width: 86ch; }
+.finding.bad { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); background: var(--bad-soft); }
+.finding.warn { border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); background: var(--warn-soft); }
+.finding.ok { border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); background: var(--ok-soft); }
+.finding .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.finding p, .finding li { font-size: 14px; }
+.finding ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.pill { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.bad { color: var(--bad); } .pill.warn { color: var(--warn); } .pill.ok { color: var(--ok); } .pill.info { color: var(--muted); }
+
+/* big pay summary panel */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.versus { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.versus > div { min-width: 0; display: flex; flex-direction: column; gap: 8px; background: var(--raise); border-radius: 8px; padding: 14px; border: 1px solid var(--line); }
+.versus h3 { font-size: 15px; }
+.versus p, .versus li { font-size: 14px; color: var(--fg); }
+.versus ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.strike { text-decoration: line-through; text-decoration-color: var(--bad); color: var(--muted) !important; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+th { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td:first-child { width: 42%; }
+td .pill { display: inline-block; margin-bottom: 4px; }
+
+/* timeline strip */
+.timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.tick { border-top: 3px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tick .d { font-family: var(--font-mono); font-size: 12.5px; }
+.tick span:last-child { font-size: 13px; color: var(--muted); }
+.tick.ok { border-color: var(--ok); } .tick.bad { border-color: var(--bad); } .tick.warn { border-color: var(--warn); }
+
+/* program cards */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card .ttl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: baseline; }
+.card .prog { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+.card ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+.card ol li::marker { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+dl.facts { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 13px; border-top: 1px solid var(--line); padding-top: 10px; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; min-width: 0; }
+.flag { font-size: 13px; color: var(--warn); }
+
+.note { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; max-width: 86ch; }
+/* SVG drawing classes */
+svg text { font-family: var(--font-body); fill: var(--fg); }
+svg .t-name { font-size: 13.5px; font-weight: 600; }
+svg .t-mono { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+svg .t-sub { font-size: 11px; fill: var(--muted); }
+svg .t-head { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; fill: var(--muted); }
+svg .t-arrow { font-size: 11px; fill: var(--muted); font-style: italic; }
+svg .t-bad { font-size: 11px; font-weight: 600; fill: var(--bad); }
+svg .t-warn { font-size: 11px; font-weight: 600; fill: var(--warn); }
+svg .box { fill: var(--raise); stroke: var(--line); stroke-width: 1.2; }
+svg .box-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+svg .box-warm { fill: var(--warm-soft); stroke: var(--warm); stroke-width: 1.6; }
+svg .box-cool { fill: var(--cool-soft); stroke: var(--cool); stroke-width: 1.6; }
+svg .box-bad { fill: var(--bad-soft); stroke: var(--bad); stroke-width: 1.6; }
+svg .box-dim { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 4 3; }
+svg .chip { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+svg .chip-warn { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1; }
+svg .chip-bad { fill: var(--bad-soft); stroke: var(--bad); stroke-width: 1; }
+svg .t-chip { font-size: 10.5px; fill: var(--fg); }
+svg .flow { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+svg .flow-accent { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+svg .flow-warm { stroke: var(--warm); stroke-width: 1.6; fill: none; }
+svg .flow-cool { stroke: var(--cool); stroke-width: 1.6; fill: none; }
+svg .flow-bad { stroke: var(--bad); stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+svg .flow-dash { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+svg .ah { fill: var(--muted); }
+svg .ah-accent { fill: var(--accent); }
+svg .ah-warm { fill: var(--warm); }
+svg .ah-cool { fill: var(--cool); }
+svg .ah-bad { fill: var(--bad); }
+
+/* ===== Page 5: issues & fixes (classes prefixed is-) ===== */
+.is-order { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; max-width: 90ch; }
+.is-order li::marker { font-family: var(--font-mono); color: var(--muted); }
+.is-list { display: flex; flex-direction: column; gap: 14px; }
+.is-card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.is-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.is-id { font-family: var(--font-mono); font-size: 12px; color: var(--c); }
+.is-head h3 { font-size: 17px; flex: 1 1 260px; min-width: 0; }
+.is-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.is-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.is-grid > div { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.is-grid h4 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.is-grid p, .is-grid li { font-size: 13.5px; line-height: 1.5; }
+.is-grid ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+.who { display: inline-block; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; padding: 0 6px; border-radius: 4px; background: var(--raise); border: 1px solid var(--line); color: var(--fg); white-space: nowrap; margin-right: 4px; }
+.is-minor { width: 100%; }
+.is-minor td:first-child { width: 28%; }
+@media (max-width: 720px) { .is-grid { grid-template-columns: 1fr; } }
+
+/* ===== Page 4: incident timeline (classes prefixed tl- to stay clear of the map's own) ===== */
+#p-timeline { --lane-w: 12px; --lanes: 5; --rail: calc(var(--lanes) * var(--lane-w) + 14px); --axis: 34px; }
+.tl-causes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.tl-cause { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tl-cause b { font-family: var(--font-display); font-size: 16px; }
+.tl-cause span { color: var(--muted); font-size: 13px; }
+.tl-cause .k { font-family: var(--font-mono); font-size: 11.5px; color: var(--c); }
+.tl-keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; }
+.tl-key { display: flex; flex-direction: column; gap: 6px; }
+.tl-key ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.tl-key li { display: flex; align-items: center; gap: 8px; }
+.tl-key i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.tl-key i.ring { background: transparent !important; border: 2px solid var(--bad); }
+.tl-key i.bar { width: 8px; height: 16px; border-radius: 2px; }
+.tl-vt { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding-block: 18px 22px; padding-right: 16px; }
+.tl-line { position: absolute; top: 0; bottom: 0; left: calc(var(--rail) + var(--axis) / 2 - 1px); width: 2px; background: var(--muted); opacity: .7; }
+.tl-row { position: relative; display: grid; grid-template-columns: var(--rail) var(--axis) minmax(0, 1fr); align-items: start; padding-block: 7px; }
+.tl-dotcell { position: relative; height: 100%; }
+.tl-dot { position: absolute; left: 50%; top: 16px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--c); border: 2px solid var(--surface); z-index: 3; }
+.tl-dot.fail { width: 20px; height: 20px; margin-left: -10px; top: 13px; background: var(--surface); border: 3px solid var(--bad); box-shadow: inset 0 0 0 4px var(--c); }
+.tl-card { position: relative; z-index: 2; max-width: 640px; background: var(--raise); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 8px; padding: 10px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 3px; }
+.tl-card.fail { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); border-left-color: var(--bad); background: color-mix(in srgb, var(--bad-soft) 65%, var(--raise)); }
+.tl-when { font-family: var(--font-mono); font-size: 12px; color: var(--c); font-variant-numeric: tabular-nums; }
+.tl-card.fail .tl-when { color: var(--bad); }
+.tl-card h3 { grid-column: 1 / -1; font-size: 16px; line-height: 1.25; }
+.tl-card p { grid-column: 1 / -1; font-size: 13.5px; color: var(--muted); line-height: 1.5; max-width: 68ch; }
+.tl-card p code { color: var(--fg); }
+.tl-tag { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; color: var(--c); white-space: nowrap; }
+.tl-card.fail .tl-tag { color: var(--bad); }
+.tl-month { position: relative; display: grid; grid-template-columns: var(--rail) var(--axis) minmax(0, 1fr); align-items: center; padding-block: 12px 4px; }
+.tl-mtick { position: relative; height: 2px; }
+.tl-mtick::after { content: ""; position: absolute; left: 50%; width: 12px; margin-left: -6px; height: 2px; background: var(--muted); }
+.tl-month h3 { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-family: var(--font-body); font-weight: 600; }
+.tl-lane { position: absolute; width: calc(var(--lane-w) - 4px); border-radius: 3px; background: var(--c); opacity: .85; z-index: 1; }
+.tl-lane.is-open { -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent); mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+.tl-lane.is-hidden { opacity: .35; }
+.tl-outage { position: absolute; left: 0; right: 0; z-index: 0; background: repeating-linear-gradient(135deg, var(--infra-soft) 0 6px, transparent 6px 12px); border-top: 1px dashed var(--infra); border-bottom: 1px dashed var(--infra); }
+.tl-outage span { position: absolute; left: 8px; top: 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--infra); }
+.tl-today { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--fg); opacity: .55; z-index: 1; }
+.tl-today span { position: absolute; left: 8px; top: -18px; font-family: var(--font-mono); font-size: 11px; color: var(--fg); }
+.tl-open ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; max-width: 86ch; }
+@media (max-width: 560px) {
+  #p-timeline { --lane-w: 9px; --axis: 26px; }
+  .tl-card { grid-template-columns: minmax(0, 1fr); }
+  .tl-tag { grid-column: 1; grid-row: auto; justify-self: start; }
+}
+
+@media (max-width: 720px) {
+  .versus, .cards { grid-template-columns: 1fr; }
+  h1 { font-size: 28px; }
+  td:first-child { width: auto; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page:not([hidden]) { animation: rise .25s ease-out; }
+  @keyframes rise { from { transform: translateY(4px); } to { transform: none; } }
+}
+</style>
+</head>
+<body>
+
+<main>
+  <header class="top">
+    <span class="eyebrow">DayforceServiceRepo · process roadmap · reviewed 29 Oct 2026</span>
+    <h1>Dayforce Integration Map</h1>
+    <p class="lede">How HR data moves between Dayforce, the SQL mirror and the outside systems, step by step, with the problems we found pinned to the step where they happen.</p>
+  </header>
+
+  <div class="status" aria-label="Current status">
+    <div class="stat"><b class="k-main">Ingest is running again</b><span>Down 9/16–9/25, likely a yearly Azure secret expiry. Writes again from 9/26. Expect a repeat in Sept 2027 unless prevented.</span></div>
+    <div class="stat"><b style="color: var(--warn)">Pay Summary is patchy</b><span>Last written 10/27 (data through 10/26). The handoff's root cause doesn't match the VM.</span></div>
+    <div class="stat"><b style="color: var(--bad)">Jobvite hires stopped 5/26</b><span>JobviteProcessor fails before onboarding every run. No hires have been auto-created in Dayforce since.</span></div>
+  </div>
+
+  <nav class="tabs" aria-label="Pages">
+    <a href="#ingest" data-k="ingest"><span class="n">1</span>Main pattern</a>
+    <a href="#writebacks" data-k="writebacks"><span class="n">2</span>Exception 1 · Write-backs</a>
+    <a href="#webhook" data-k="webhook"><span class="n">3</span>Exception 2 · Jobvite webhook</a>
+    <a href="#timeline" data-k="timeline"><span class="n">4</span>Incident timeline</a>
+    <a href="#issues" data-k="issues"><span class="n">5</span>Issues &amp; fixes</a>
+  </nav>
+
+  <!-- ================= PAGE 1: MAIN PATTERN ================= -->
+  <div class="page" id="p-ingest" data-page="ingest">    <section>
+      <div class="intro">
+        <span class="eyebrow k-main">Page 1 · The main pattern</span>
+        <h2>Ingest, store, distribute</h2>
+        <p>One program copies Dayforce into a SQL database. Eight integrations then read that copy and send files out. If the copy goes stale, they keep running but send stale data.</p>
+      </div>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 1040 484" role="img" aria-label="Dayforce data is pulled by DayforceProcessor on the VM into the SQL mirror database. Eight outbound integrations read the mirror and send data to AwardCo, Backstitch, HR Acuity, WeCare, Yardi Aspire, HealthEquity, Reliance Standard and Relias. DayforceProcessor had an outage from 16 to 25 September and its Pay Summary step stops intermittently.">
+            <defs>
+              <marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="m1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-accent" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text class="t-head" x="20" y="28">STAGE 1 · INGEST</text>
+            <text class="t-head" x="420" y="28">STAGE 2 · STORE</text>
+            <text class="t-head" x="660" y="28">STAGE 3 · DISTRIBUTE</text>
+            <text class="t-head" x="858" y="28">ALSO READS FROM</text>
+
+            <rect class="box" x="20" y="224" width="120" height="70" rx="6"/>
+            <text class="t-name" x="80" y="255" text-anchor="middle">Dayforce</text>
+            <text class="t-sub" x="80" y="274" text-anchor="middle">HR &amp; payroll</text>
+            <line class="flow-accent" x1="140" y1="259" x2="196" y2="259" marker-end="url(#m1a)"/>
+            <text class="t-arrow" x="168" y="250" text-anchor="middle">API pull</text>
+
+            <rect class="box-accent" x="200" y="204" width="160" height="110" rx="6"/>
+            <text class="t-mono" x="280" y="234" text-anchor="middle">DayforceProcessor</text>
+            <text class="t-sub" x="280" y="254" text-anchor="middle">the program on the VM</text>
+            <text class="t-sub" x="280" y="278" text-anchor="middle">00:15 full run</text>
+            <text class="t-sub" x="280" y="295" text-anchor="middle">16:00 light run</text>
+            <rect class="chip-warn" x="200" y="324" width="160" height="22" rx="11"/>
+            <text class="t-warn" x="280" y="339" text-anchor="middle">down 9/16–9/25 · recovered</text>
+            <rect class="chip-warn" x="200" y="352" width="160" height="22" rx="11"/>
+            <text class="t-warn" x="280" y="367" text-anchor="middle">Pay Summary intermittent</text>
+
+            <line class="flow-accent" x1="360" y1="259" x2="416" y2="259" marker-end="url(#m1a)"/>
+            <text class="t-arrow" x="388" y="250" text-anchor="middle">writes</text>
+
+            <rect class="box" x="420" y="209" width="150" height="100" rx="6"/>
+            <text class="t-name" x="495" y="245" text-anchor="middle">SQL mirror</text>
+            <text class="t-sub" x="495" y="265" text-anchor="middle">Dayforce database</text>
+            <text class="t-sub" x="495" y="282" text-anchor="middle">125 tables</text>
+
+            <line class="flow" x1="570" y1="259" x2="604" y2="259"/>
+            <text class="t-arrow" x="587" y="250" text-anchor="middle">read</text>
+            <path class="flow" d="M604,259 C632,259 628,70 656,70" marker-end="url(#m1)"/>
+            <path class="flow" d="M604,259 C632,259 628,124 656,124" marker-end="url(#m1)"/>
+            <path class="flow" d="M604,259 C632,259 628,178 656,178" marker-end="url(#m1)"/>
+            <path class="flow" d="M604,259 C632,259 628,232 656,232" marker-end="url(#m1)"/>
+            <path class="flow" d="M604,259 C632,259 628,286 656,286" marker-end="url(#m1)"/>
+            <path class="flow" d="M604,259 C632,259 628,340 656,340" marker-end="url(#m1)"/>
+            <path class="flow" d="M604,259 C632,259 628,394 656,394" marker-end="url(#m1)"/>
+            <path class="flow" d="M604,259 C632,259 628,448 656,448" marker-end="url(#m1)"/>
+
+            <rect class="box" x="660" y="50" width="190" height="40" rx="5"/>
+            <text class="t-name" x="672" y="67">AwardCo</text>
+            <text class="t-sub" x="672" y="82">AwardCoProcessor · SFTP</text>
+            <rect class="chip" x="858" y="59" width="76" height="22" rx="11"/>
+            <text class="t-chip" x="896" y="74" text-anchor="middle">Entra ID</text>
+
+            <rect class="box" x="660" y="104" width="190" height="40" rx="5"/>
+            <text class="t-name" x="672" y="121">Backstitch</text>
+            <text class="t-sub" x="672" y="136">BackstitchProcessor · SFTP</text>
+            <rect class="chip" x="858" y="113" width="76" height="22" rx="11"/>
+            <text class="t-chip" x="896" y="128" text-anchor="middle">Entra ID</text>
+
+            <rect class="box" x="660" y="158" width="190" height="40" rx="5"/>
+            <text class="t-name" x="672" y="175">HR Acuity</text>
+            <text class="t-sub" x="672" y="190">HRAcuityProcessor · SFTP</text>
+            <rect class="chip" x="858" y="167" width="76" height="22" rx="11"/>
+            <text class="t-chip" x="896" y="182" text-anchor="middle">Yardi DB</text>
+
+            <rect class="box" x="660" y="212" width="190" height="40" rx="5"/>
+            <text class="t-name" x="672" y="229">WeCare</text>
+            <text class="t-sub" x="672" y="244">WeCareProcessor · SFTP</text>
+            <rect class="chip" x="858" y="221" width="76" height="22" rx="11"/>
+            <text class="t-chip" x="896" y="236" text-anchor="middle">Yardi DB</text>
+            <rect class="chip" x="942" y="221" width="76" height="22" rx="11"/>
+            <text class="t-chip" x="980" y="236" text-anchor="middle">Entra ID</text>
+
+            <rect class="box" x="660" y="266" width="190" height="40" rx="5"/>
+            <text class="t-name" x="672" y="283">Yardi Aspire</text>
+            <text class="t-sub" x="672" y="298">YardiAspireUpload · SFTP</text>
+            <rect class="chip" x="858" y="275" width="76" height="22" rx="11"/>
+            <text class="t-chip" x="896" y="290" text-anchor="middle">Entra ID</text>
+
+            <rect class="box" x="660" y="320" width="190" height="40" rx="5"/>
+            <text class="t-name" x="672" y="337">HealthEquity</text>
+            <text class="t-sub" x="672" y="352">Azure Function · SFTP</text>
+
+            <rect class="box" x="660" y="374" width="190" height="40" rx="5"/>
+            <text class="t-name" x="672" y="391">Reliance Standard</text>
+            <text class="t-sub" x="672" y="406">MatrixProcessor · SFTP</text>
+            <rect class="chip" x="858" y="383" width="76" height="22" rx="11"/>
+            <text class="t-chip" x="896" y="398" text-anchor="middle">Entra ID</text>
+            <rect class="chip" x="942" y="383" width="76" height="22" rx="11"/>
+            <text class="t-chip" x="980" y="398" text-anchor="middle">Dayforce API</text>
+
+            <rect class="box" x="660" y="428" width="190" height="40" rx="5"/>
+            <text class="t-name" x="672" y="445">Relias</text>
+            <text class="t-sub" x="672" y="460">Azure Function · SFTP</text>
+          </svg>
+        </div>
+        <figcaption>DayforceProcessor is the only program that loads the SQL mirror. The amber chips mark the two problems found in it; both are detailed in Stage 1 below. Chips on the right are extra sources an integration reads on top of the mirror.</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <div class="intro">
+        <span class="eyebrow k-main">Stage 1 · Ingest</span>
+        <h2>One DayforceProcessor run, in order</h2>
+        <p>Task Scheduler on the VM starts the exe twice a day. Each step runs only if the one before it didn't crash the program. The 00:15 run does everything; the 16:00 run does fewer steps, chosen by its command-line arguments.</p>
+      </div>
+      <ol class="road main">
+        <li><span class="num">0</span><div class="body">
+          <span class="what">Start and decide what to run</span>
+          <span class="detail">Reads its options. The VM has no <code>runsettings.json</code> (only a <code>.bak</code>), so with no arguments every step is switched on. Lookup tables refresh only in the midnight hour.</span>
+        </div></li>
+        <li><span class="num warn">1</span><div class="body">
+          <span class="what">Get passwords from Azure Key Vault</span>
+          <span class="detail">First logs into Azure as an app registration, using the client ID, secret and tenant stored in the VM's <code>AZURE_*</code> environment variables. Then fetches the SQL connection and the Dayforce API login from the vault <code>itapplications</code>.</span>
+          <div class="finding warn">
+            <div class="head"><span class="pill warn">Layered finding · VM job troubleshooting</span><b>The September outage, and why it happens every year</b></div>
+            <p><b>The problem.</b> The 00:15 run on 9/16/2026 was the last good one. From the 16:00 run on, every log stopped right after "Getting Dayforce API Connection and Account from Azure KeyVault", with no error, and every failed log was the same size.</p>
+            <div class="timeline">
+              <div class="tick bad"><span class="d">Sep 15, 2024</span><span>Same step fails at 00:15. Fixed about 7:16 PM.</span></div>
+              <div class="tick bad"><span class="d">Sep 16, 2025</span><span>Fails at 00:15. Fixed by hand before 9:04 AM.</span></div>
+              <div class="tick bad"><span class="d">Sep 16, 2026</span><span>Fails from the 16:00 run on</span></div>
+              <div class="tick ok"><span class="d">Sep 26, 2026</span><span>SQL shows writes again. Fix not recorded.</span></div>
+            </div>
+            <p><b>Most likely cause.</b> The Azure client secret the VM uses is created with a one-year lifetime. Each failure comes almost exactly a year after the last fix. When the secret expires, the program can't log into Azure, so it can't reach Key Vault. That's why the Dayforce password and the Key Vault secret both checked out fine. Not yet confirmed.</p>
+            <p><b>Why the log shows no error.</b> A failed vault read returns nothing instead of raising an error. The program crashes a step later, and its error handler then crashes too. So the real error, expected to be <code>AADSTS7000222</code>, only appears in Windows Event Viewer.</p>
+            <div class="tablewrap">
+              <table>
+                <thead><tr><th>Troubleshooting next step</th><th>Status now</th></tr></thead>
+                <tbody>
+                  <tr><td>Check Event Viewer around 4 PM on 9/16 for <code>AADSTS7000222</code></td><td><span class="pill warn">Open</span><br>Expect a .NET Runtime 1026 or Application Error 1000 entry. It may show a null-reference error instead (the handler crash).</td></tr>
+                  <tr><td>Read <code>AZURE_CLIENT_ID</code> on the VM, then check that app's secrets in Entra ID</td><td><span class="pill warn">Open</span><br>Since the job recovered 9/26, look for a new secret created around 9/25–9/26 and note its expiry date.</td></tr>
+                  <tr><td>Create a new secret, update <code>AZURE_CLIENT_SECRET</code>, rerun</td><td><span class="pill ok">Apparently done</span><br>By someone, around 9/25–9/26. Find out who.</td></tr>
+                  <tr><td>Prevent it next year: calendar reminder, or switch to a managed identity</td><td><span class="pill bad">Still needed</span><br>Otherwise expect the same outage around September 2027.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div></li>
+        <li><span class="num">2</span><div class="body">
+          <span class="what">System tasks: refresh lookup tables</span>
+          <span class="detail">Departments, jobs, locations, positions, pay codes, earning types. These are the "dimension" tables the pay data points to.</span>
+          <div class="tables"><span class="tbl">tDepartment</span><span class="tbl">tJob</span><span class="tbl">tLocation</span><span class="tbl">tPosition</span><span class="tbl">tPayCode</span></div>
+        </div></li>
+        <li><span class="num">3</span><div class="body">
+          <span class="what">Update associates from the Dayforce API</span>
+          <span class="detail">Employees and their addresses, contacts, managers, work assignments and employment status.</span>
+          <div class="tables"><span class="tbl">tAssociate · 9,139</span><span class="tbl">tAssociateWorkAssignment</span><span class="tbl">tAssociateManager</span><span class="tbl">tAssociateContact</span></div>
+        </div></li>
+        <li><span class="num">4</span><div class="body">
+          <span class="what">Analytics</span>
+          <span class="detail">Rebuilds the day-by-day employment status history used for reporting.</span>
+          <div class="tables"><span class="tbl">tAnalyticAssociateEmploymentStatusByDate · 20.4M</span></div>
+        </div></li>
+        <li><span class="num warn">5</span><div class="body">
+          <span class="what">Create ServiceNow tickets for hires and terminations</span>
+          <span class="detail">Opens hire and term incidents in ServiceNow so IT can set up or remove accounts.</span>
+          <div class="finding warn">
+            <div class="head"><span class="pill warn">Past outage</span><b>20 Aug – 3 Sept: crashed on a manager with no email</b></div>
+            <p>The code assumes every manager has an email and a work assignment. One didn't, so steps 5 and 6 threw "index out of range" every run for two weeks. The code still makes that assumption.</p>
+          </div>
+          <div class="finding bad">
+            <div class="head"><span class="pill bad">Security</span><b>ServiceNow login is built into the program</b></div>
+            <p>The ServiceNow username and password used for these tickets are hard-coded in <code>WallickCommonUtilities.dll</code> and in the repo. Anyone with the VM zip on OneDrive can read them. Change that password and move the login into Key Vault.</p>
+          </div>
+        </div></li>
+        <li><span class="num warn">6</span><div class="body">
+          <span class="what">Email reports</span>
+          <span class="detail">Sends the hire, term and change reports to the recipients in the VM's <code>settings.json</code>.</span>
+          <div class="finding warn">
+            <div class="head"><span class="pill warn">Past outage</span><b>3–17 June: the email service refused to send</b></div>
+            <p>Exchange returned "HVE account is not properly set up for billing", which stopped the run at this step. Most failure alerts across these programs go through the same HVE email service.</p>
+          </div>
+        </div></li>
+        <li><span class="num warn">7</span><div class="body">
+          <span class="what">Pay Summary: copy timecard pay lines</span>
+          <span class="detail">Pulls pay summary records day by day for the last 30 days (365 on Sundays) and writes only the days that changed.</span>
+          <div class="tables"><span class="tbl">tAssociatePaySummaryRecord · 3.4M</span><span class="tbl">tPaySummaryTracking</span></div>
+          <div class="finding warn">
+            <div class="head"><span class="pill warn">Open issue</span><b>See the Pay Summary panel below</b></div>
+            <p>The run sometimes stops silently here, and the handoff document's explanation doesn't fit the VM.</p>
+          </div>
+        </div></li>
+        <li><span class="num">8</span><div class="body">
+          <span class="what">Pay runs</span>
+          <span class="detail">Copies committed pay runs and the full pay register. Backstitch and HealthEquity read these.</span>
+          <div class="tables"><span class="tbl">tPayRun</span><span class="tbl">tPayRunRegister · 21.9M</span></div>
+        </div></li>
+        <li><span class="num">9</span><div class="body">
+          <span class="what">Schedules</span>
+          <span class="detail">Copies employee work schedules and breaks.</span>
+          <div class="tables"><span class="tbl">tAssociateSchedule</span><span class="tbl">tAssociateScheduleBreak</span></div>
+        </div></li>
+        <li><span class="num">10</span><div class="body">
+          <span class="what">Post-run tasks and "Done."</span>
+          <span class="detail">Marks each step's status in <code>tProcessLog</code> and writes the final log line. A log without "Done." means the run stopped early.</span>
+        </div></li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="panel">
+        <div class="intro">
+          <span class="eyebrow" style="color: var(--warn)">Layered finding · PaySummary-Issue Handoff &amp; Diagnosis</span>
+          <h2>Pay Summary: what the handoff says vs. what the evidence shows</h2>
+          <p>The handoff brief was written from the source code alone. The VM folder, its logs and the live SQL tables tell a different story.</p>
+        </div>
+        <div class="versus">
+          <div>
+            <span class="pill info" style="align-self: flex-start">Handoff brief</span>
+            <h3>Problem</h3>
+            <p><code>tAssociatePaySummaryRecord</code> stopped getting rows, while the nightly job reports success. A silent no-op, not a crash.</p>
+            <h3>Root cause it names</h3>
+            <p class="strike">A <code>runsettings.json</code> on the VM turns off the "everything on" default, and the settings file has no way to switch Pay Summary back on, so the step logs "Skipping Processing Pay Summary" every night.</p>
+          </div>
+          <div>
+            <span class="pill ok" style="align-self: flex-start">Evidence · VM + SQL</span>
+            <h3>The flag is on</h3>
+            <ul>
+              <li>The VM has no <code>runsettings.json</code>, only <code>runsettings.json.bak</code>, so the default "everything on" path applies.</li>
+              <li>Full-run logs print "Process Pay Summary: True", and "Processing Pay Summaries Started" appears 879 times since 2024.</li>
+            </ul>
+            <h3>What actually happens</h3>
+            <ul>
+              <li>Some run logs end at "Processing Pay Summaries Started" with no "Done.": 7/1, 7/22, 8/5, 8/19, 9/9 and 9/16. The VM troubleshooting summary calls this normal for good runs. Whether those runs finished the later steps is unconfirmed.</li>
+              <li>Then the 9/16–9/25 outage stopped everything (step 1).</li>
+              <li>SQL now: writes resumed 9/26; the latest was 10/27 at 14:42 (data through 10/26). Nothing was written on 10/28 or 10/29.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="timeline" aria-label="Pay Summary timeline">
+          <div class="tick warn"><span class="d">Jul – Sep 9</span><span>Run stops inside Pay Summary on 6 nights</span></div>
+          <div class="tick bad"><span class="d">Sep 10 – 25</span><span>No Pay Summary writes (outage)</span></div>
+          <div class="tick ok"><span class="d">Sep 26</span><span>Writes resume</span></div>
+          <div class="tick ok"><span class="d">Oct 16 – 25</span><span>Mid-Sept dates rewritten, so the gap looks refilled</span></div>
+          <div class="tick warn"><span class="d">Oct 27 → today</span><span>Last write 10/27; none since</span></div>
+        </div>
+
+        <h3>Which of the handoff's fixes still apply</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Handoff recommendation</th><th>Status given the evidence</th></tr></thead>
+            <tbody>
+              <tr><td>Short-term: add <code>/Support</code> or <code>/UpdatePaySummary</code> to the scheduled task</td><td><span class="pill info">Not needed</span><br>The step is already on. Adding an argument would actually switch off the "everything on" default and could drop other steps.</td></tr>
+              <tr><td>Make sure lookup tables are fresh before Pay Summary runs</td><td><span class="pill ok">Still sensible</span><br>Step 2 does this in the midnight run. A missing lookup row makes the save fail.</td></tr>
+              <tr><td>Confirm the log says "Processing…" not "Skipping…"</td><td><span class="pill ok">Done</span><br>It says "Processing Pay Summaries Started".</td></tr>
+              <tr><td>Backfill gaps older than 30 days by hand</td><td><span class="pill warn">Verify</span><br>Tracking rows for 9/8–9/30 were rewritten 10/16–10/25, so the outage gap appears refilled. Worth a count check per day.</td></tr>
+              <tr><td>Long-term: let <code>runsettings.json</code> control Pay Summary, Pay Run and Schedule</td><td><span class="pill info">Nice to have</span><br>Not the cause, but it would make the settings clearer.</td></tr>
+              <tr><td>Fix <code>/UpdatePaySummarySkip</code>, which turns off the wrong step</td><td><span class="pill bad">Real bug</span><br>Confirmed in code. It switches off associate updates instead of Pay Summary.</td></tr>
+              <tr><td>Log failed API days instead of silently skipping them</td><td><span class="pill bad">Still applies</span><br>Days with a failed API call are dropped without a word. Keep the retry-next-run behavior.</td></tr>
+              <tr><td>Fail loudly when a lookup returns no match</td><td><span class="pill bad">Still applies</span><br>Could explain some silent stops; unconfirmed.</td></tr>
+              <tr><td>Add a deploy step (or a written runbook)</td><td><span class="pill bad">Still applies</span><br>Deploying to the VM is manual today. This topic is pinned for later.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="finding">
+          <div class="head"><span class="pill info">Next checks</span></div>
+          <ul>
+            <li>Read the newest VM logs (after 9/21) for the 10/28 and 10/29 runs, and see where they end.</li>
+            <li>Check Windows Event Viewer on the VM for crashes of <code>DayforceProcessor.exe</code> on the nights the log stops at Pay Summary.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro">
+        <span class="eyebrow k-main">Stage 2 · Store</span>
+        <h2>The SQL mirror</h2>
+        <p>The <code>Dayforce</code> database on <code>wcsql01</code>. It's a database, not a program: it only changes when something writes to it. Besides the Dayforce copy, the integrations keep their own tracking tables here.</p>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Copied from Dayforce (stage 1)</h3>
+          <div class="tables"><span class="tbl">tAssociate · 9,139</span><span class="tbl">tAssociatePaySummaryRecord · 3.4M</span><span class="tbl">tPayRunRegister · 21.9M</span><span class="tbl">tAssociateSchedule · 314K</span><span class="tbl">tLocation · 2,062</span><span class="tbl">tPosition · 565</span></div>
+        </div>
+        <div class="card">
+          <h3>Written by the integrations</h3>
+          <div class="tables"><span class="tbl">tProcessLog</span><span class="tbl">tIntegrationRunHistory</span><span class="tbl">tIntegrationRemittanceStatus</span><span class="tbl">tBackstitchFeedStatus</span><span class="tbl">tReliasIssue</span><span class="tbl">tNationwidePetInsurance</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro">
+        <span class="eyebrow k-main">Stage 3 · Distribute</span>
+        <h2>The eight outbound integrations</h2>
+        <p>None of them has a schedule in the code. The command-line programs are scheduled somewhere outside the repo, and the Azure Functions run when something calls their web address. Which machine runs each one is still unconfirmed.</p>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <div class="ttl"><h3>AwardCo</h3><span class="prog">AwardCoProcessor · exe</span></div>
+          <ol>
+            <li>Pull active associates and locations from the mirror</li>
+            <li>Match each person to Entra ID by employee ID</li>
+            <li>Map to AwardCo's layout (manager flag, parent location)</li>
+            <li>Write <code>AwardCo User File yyyy-MM-dd.csv</code></li>
+            <li>Upload to AwardCo SFTP</li>
+          </ol>
+          <dl class="facts"><dt>Sources</dt><dd>Mirror, Entra ID</dd><dt>Tracking</dt><dd>None</dd><dt>On failure</dt><dd>Emails an alert</dd></dl>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>Backstitch</h3><span class="prog">BackstitchProcessor · exe</span></div>
+          <ol>
+            <li>Refresh the feed status from Dayforce pay runs</li>
+            <li>Stop if no new committed pay run</li>
+            <li>Pull year-to-date pay register, associates, locations</li>
+            <li>Match to Entra ID and map to Backstitch's layout</li>
+            <li>If any record has problems, email them and send nothing</li>
+            <li>Upload the CSV to SFTP and mark the pay run submitted</li>
+          </ol>
+          <dl class="facts"><dt>Sources</dt><dd>Mirror (pay runs), Entra ID</dd><dt>Tracking</dt><dd><code>tBackstitchFeedStatus</code></dd><dt>On failure</dt><dd>Emails an alert</dd></dl>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>HR Acuity</h3><span class="prog">HRAcuityProcessor · exe</span></div>
+          <ol>
+            <li>Build the Location file from Dayforce locations and Yardi properties</li>
+            <li>Build the Group file from the HR Acuity group mapping</li>
+            <li>Build the Employee file from associates</li>
+            <li>Email a warning on duplicate employee IDs</li>
+            <li>Upload all three CSVs to SFTP</li>
+          </ol>
+          <dl class="facts"><dt>Sources</dt><dd>Mirror, Yardi database</dd><dt>Tracking</dt><dd>None</dd><dt>On failure</dt><dd>Emails an alert</dd></dl>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>WeCare</h3><span class="prog">WeCareProcessor · exe</span></div>
+          <ol>
+            <li>Wait for the overnight Dayforce and Yardi syncs to finish (gives up after hours)</li>
+            <li>Build the associate file, with emails from Entra ID</li>
+            <li>Build the senior-living resident file from Yardi</li>
+            <li>Optional: affordable-housing residents; work orders on Tuesdays</li>
+            <li>Upload the CSVs, email data issues, delete old files</li>
+          </ol>
+          <dl class="facts"><dt>Sources</dt><dd>Mirror, Yardi, Entra ID</dd><dt>Tracking</dt><dd>Reads <code>tProcessLog</code> only</dd><dt>On failure</dt><dd>Emails an alert</dd></dl>
+          <span class="flag">Possible bug: a failed run can still return "success" to the scheduler.</span>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>Yardi Aspire</h3><span class="prog">YardiAspireUpload · exe</span></div>
+          <ol>
+            <li>Pull associates in four pay groups; skip terms older than 48 months</li>
+            <li>Match to Entra ID by employee number; log anyone missing</li>
+            <li>Clean up phone numbers</li>
+            <li>Write <code>Wallick User File yyyy-MM-dd.csv</code></li>
+            <li>Upload to the Yardi e-learning SFTP folder</li>
+          </ol>
+          <dl class="facts"><dt>Sources</dt><dd>Mirror, Entra ID</dd><dt>Tracking</dt><dd>None</dd><dt>On failure</dt><dd>Emails an alert</dd></dl>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>HealthEquity</h3><span class="prog">Azure Functions · FSA + HSA</span></div>
+          <ol>
+            <li>Log "Started" in run history</li>
+            <li>Add new pay runs to the remittance status table</li>
+            <li>Stop if none are waiting to be sent</li>
+            <li>Read each pay date's deductions</li>
+            <li>Write the FSA or HSA text file and upload to SFTP</li>
+            <li>Mark pay runs Completed or Upload Failed</li>
+          </ol>
+          <dl class="facts"><dt>Sources</dt><dd>Mirror (pay runs)</dd><dt>Tracking</dt><dd><code>tIntegrationRunHistory</code>, <code>tIntegrationRemittanceStatus</code></dd><dt>On failure</dt><dd>Emails an alert</dd></dl>
+          <span class="flag">Test modes still mark real pay runs as submitted.</span>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>Reliance Standard</h3><span class="prog">MatrixProcessor · exe</span></div>
+          <ol>
+            <li>Build an employee-ID-to-email lookup from Entra ID</li>
+            <li>Pull positions, locations, associates</li>
+            <li>Pull 12 months of payroll values</li>
+            <li>Pull the carrier feed straight from the Dayforce API</li>
+            <li>Map records; stop with no file if any fail</li>
+            <li>Write the pipe-delimited file and upload to SFTP</li>
+          </ol>
+          <dl class="facts"><dt>Sources</dt><dd>Mirror, Entra ID, Dayforce API</dd><dt>Tracking</dt><dd>None</dd><dt>On failure</dt><dd>Emails an alert</dd></dl>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>Relias</h3><span class="prog">Azure Functions</span></div>
+          <ol>
+            <li>Log "Started" in run history</li>
+            <li>Map associates to Relias demographic records</li>
+            <li>Write the text file and upload to SFTP</li>
+            <li>Email the list of open issues</li>
+            <li>Separately: load an uploaded org hierarchy file into the mapping tables</li>
+          </ol>
+          <dl class="facts"><dt>Sources</dt><dd>Mirror</dd><dt>Tracking</dt><dd><code>tIntegrationRunHistory</code>, <code>tReliasIssue</code></dd><dt>On failure</dt><dd>Returns an error to the caller; the issues email is the only alert</dd></dl>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 2: WRITE-BACKS ================= -->
+  <div class="page" id="p-writebacks" data-page="writebacks" hidden>    <section>
+      <div class="intro">
+        <span class="eyebrow k-back">Page 2 · Exception 1</span>
+        <h2>Flows that write into Dayforce</h2>
+        <p>These run the opposite way: outside data goes into Dayforce through its API. Their changes reach the SQL mirror only when DayforceProcessor next copies Dayforce in.</p>
+      </div>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 1040 226" role="img" aria-label="Jobvite hires go through JobviteProcessor, Nationwide Pet deduction files through an Azure Function, and an ESOP spreadsheet through ESOPUpdater. All three write into Dayforce. The Jobvite path has been stopped since 26 May 2026.">
+            <defs>
+              <marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="m2w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-warm" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="m2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-bad" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text class="t-head" x="20" y="24">STARTS FROM</text>
+            <text class="t-head" x="330" y="24">PROGRAM</text>
+            <text class="t-head" x="640" y="24">WRITES INTO</text>
+
+            <rect class="box" x="20" y="40" width="250" height="44" rx="5"/>
+            <text class="t-name" x="34" y="58">Jobvite</text>
+            <text class="t-sub" x="34" y="75">hires that finished onboarding</text>
+            <rect class="box" x="20" y="100" width="250" height="44" rx="5"/>
+            <text class="t-name" x="34" y="118">Nationwide Pet</text>
+            <text class="t-sub" x="34" y="135">deduction file over SFTP</text>
+            <rect class="box" x="20" y="160" width="250" height="44" rx="5"/>
+            <text class="t-name" x="34" y="178">ESOP spreadsheet</text>
+            <text class="t-sub" x="34" y="195">CSV file, one-off tool</text>
+
+            <line class="flow" x1="270" y1="62" x2="326" y2="62" marker-end="url(#m2)"/>
+            <line class="flow" x1="270" y1="122" x2="326" y2="122" marker-end="url(#m2)"/>
+            <line class="flow" x1="270" y1="182" x2="326" y2="182" marker-end="url(#m2)"/>
+
+            <rect class="box-bad" x="330" y="40" width="230" height="44" rx="5"/>
+            <text class="t-mono" x="344" y="59">JobviteProcessor</text>
+            <text class="t-bad" x="344" y="75">failing every run since 5/26</text>
+            <rect class="box" x="330" y="100" width="230" height="44" rx="5"/>
+            <text class="t-mono" x="344" y="119">NationwidePetFileProcess</text>
+            <text class="t-sub" x="344" y="135">Azure Function</text>
+            <rect class="box" x="330" y="160" width="230" height="44" rx="5"/>
+            <text class="t-mono" x="344" y="179">ESOPUpdater</text>
+            <text class="t-sub" x="344" y="195">console program, run by hand</text>
+
+            <line class="flow-bad" x1="560" y1="62" x2="636" y2="62" marker-end="url(#m2b)"/>
+            <line class="flow-warm" x1="560" y1="122" x2="636" y2="122" marker-end="url(#m2w)"/>
+            <line class="flow-warm" x1="560" y1="182" x2="636" y2="182" marker-end="url(#m2w)"/>
+            <text class="t-bad" x="598" y="55" text-anchor="middle">new hires</text>
+            <text class="t-arrow" x="598" y="115" text-anchor="middle">deductions</text>
+            <text class="t-arrow" x="598" y="175" text-anchor="middle">ESOP flag</text>
+
+            <rect class="box-warm" x="640" y="40" width="170" height="164" rx="6"/>
+            <text class="t-name" x="725" y="118" text-anchor="middle">Dayforce</text>
+            <text class="t-sub" x="725" y="136" text-anchor="middle">via its API</text>
+
+            <line class="flow-dash" x1="810" y1="122" x2="866" y2="122" marker-end="url(#m2)"/>
+            <text class="t-arrow" x="838" y="113" text-anchor="middle">next run</text>
+            <rect class="box-dim" x="870" y="92" width="150" height="60" rx="6"/>
+            <text class="t-name" x="945" y="118" text-anchor="middle">SQL mirror</text>
+            <text class="t-sub" x="945" y="136" text-anchor="middle">copied in by stage 1</text>
+          </svg>
+        </div>
+        <figcaption>The red path is the Jobvite hire write-back. JobviteProcessor still starts about every hour, but it crashes before it reaches onboarding or the write-back.</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <div class="intro">
+        <span class="eyebrow k-back">JobviteProcessor</span>
+        <h2>One JobviteProcessor run, in order</h2>
+        <p>Its own database is <code>Jobvite</code> on the same SQL server. Its folder was copied from the VM on 30 Oct (<code>VM-JobviteProcessor</code>, 11,060 logs since Jan 2024). It runs as <b>two scheduled jobs</b>: the main run (steps 0–7) at 06, 08, 10, 12, 14, 16, 18 and 23, and the user sync (step 8) on its own at 09, 13 and 15. Within a run, any step that throws ends the run, and nothing after it happens.</p>
+      </div>
+
+      <div class="finding bad">
+        <div class="head"><span class="pill bad">Layered finding · log-verified</span><b>Three separate failures, all still active</b></div>
+        <p><code>tOBNewHire</code> and <code>tJobviteToDayforceStatus</code> have nothing after 5/26. The cause is upstream of the write-back: since 5/26 every main run has crashed at step 3, then from 9/14 at step 2, so steps 4–7 never run. The user sync has its own, earlier failure.</p>
+        <div class="timeline">
+          <div class="tick bad"><span class="d">Apr 2 · 09:00</span><span>User sync (step 8) starts crashing on a duplicate primary assignment. From 6 May to 2 Oct it fails earlier, on an empty Entra user list (see page 4).</span></div>
+          <div class="tick ok"><span class="d">May 26 · 18:02</span><span>Last complete main run. Last hire written to Dayforce at 19:54.</span></div>
+          <div class="tick bad"><span class="d">May 26 · 23:00</span><span>Step 3 starts failing: duplicate application ID <code>pzjsNywa</code>. The same error repeats in 775 runs.</span></div>
+          <div class="tick warn"><span class="d">Sep 10 – 14</span><span>No logs from 9/10 09:00 to 9/14 23:00, the same gap as DayforceProcessor. The VM was likely down.</span></div>
+          <div class="tick bad"><span class="d">Sep 14 · 23:00</span><span>Step 2 starts failing first: a requisition with no location</span></div>
+          <div class="tick bad"><span class="d">Oct 30</span><span>Still failing: the main run at step 2, the user sync at step 8</span></div>
+        </div>
+      </div>
+
+      <ol class="road back">
+        <li><span class="num">0</span><div class="body">
+          <span class="what">Start, archive the last run's status</span>
+          <span class="detail">Copies the previous run's step statuses into <code>tProcessStatusLogArchive</code> (305K rows of history). This archive is how we traced the break.</span>
+        </div></li>
+        <li><span class="num">1</span><div class="body">
+          <span class="what">Refresh reference data from the Jobvite API</span>
+          <span class="detail">Workflow, custom fields, locations and Jobvite employee accounts, each switched on by its own option.</span>
+        </div></li>
+        <li><span class="num bad">2</span><div class="body">
+          <span class="what">Requisitions (job openings)</span>
+          <div class="tables"><span class="tbl">tRequisition</span><span class="tbl">tRequisitionStatus</span></div>
+          <span class="detail">The webhook (page 3) saves requisitions one at a time and is the primary path. This step is the hourly double check: it re-pulls everything changed since its last success.</span>
+          <div class="finding bad"><div class="head"><span class="pill bad">Failing since 9/14 · cause confirmed</span></div><p>The error is "Value cannot be null (Parameter 'collection')". The stack trace points to <code>JobviteLibrary.cs:685</code>, which collects each requisition's locations. The requisition is <b>#20726 "Community Manager"</b> (<code>oCPwAfwh</code>), found in the webhook inbox. It carries only a location ID (<code>CnV9Vfw6</code>, unknown to Jobvite's location list) and no location list. It sat harmlessly as a draft from 21 Jul, because Jobvite doesn't send drafts. On 14 Sep it was closed straight from draft, which made it visible; the webhook failed on it too. The pull is stuck on "changed since 9/10", so it breaks every run. <code>tLocation</code> and the workflow-status list haven't been refreshed since, because both refreshes run after line 685.</p><p><b>Fix (no code):</b> a Jobvite admin opens #20726 and gives it a valid location or deletes it. <b>Permanent fix:</b> null checks on lines 668 and 685 and in <code>RequisitionLocation.cs:25</code>.</p></div>
+        </div></li>
+        <li><span class="num bad">3</span><div class="body">
+          <span class="what">Candidates and applications</span>
+          <div class="tables"><span class="tbl">tCandidate</span><span class="tbl">tCandidateApplication</span><span class="tbl">tCandidateApplicationWorkflowStatus</span></div>
+          <div class="finding bad"><div class="head"><span class="pill bad">Failing 5/26 – 9/10 · cause found</span></div><p>The log file has the inner error that the status table drops: <i>"Violation of PRIMARY KEY constraint 'PK_tCandidateApplication' … duplicate key value is (pzjsNywa)"</i>. Every failed run dies on the same candidate, <code>eZFOCtw2</code>, which applied twice on the evening of 5/26. Jobvite gave the two applications IDs that differ only in letter case: <code>pzjsNywa</code> and <code>pZjsNywA</code>. The database is case-sensitive and stores both, but <code>JobviteContext.cs:107-126</code> tells the program to compare these IDs ignoring case. When it reads the candidate back, the two rows merge into one, so <code>pzjsNywa</code> looks missing and the program tries to insert it again.</p><p><b>It will return</b> as soon as step 2 is fixed. <b>Fix (code):</b> make that comparison case-sensitive; no data change is needed. Found in the repo; very likely the same in the deployed build, still to confirm.</p></div>
+        </div></li>
+        <li><span class="num dim">4</span><div class="body">
+          <span class="what">Onboarding pull: new hires and their tasks</span>
+          <span class="detail">Fetches onboarding processes and tasks, including the data the hire typed in (SSN stored encrypted).</span>
+          <div class="tables"><span class="tbl">tOBNewHire · 3,537</span><span class="tbl">tOBProcess</span><span class="tbl">tOBTask</span><span class="tbl">tOBTaskDataCollected</span></div>
+          <div class="finding bad"><div class="head"><span class="pill bad">Not reached since 5/26</span></div><p>Not broken itself, only blocked. <code>JobviteAPICallLogs</code> shows the last onboarding calls (<code>process</code>, <code>task</code>) on 5/26 at 22:36 and 23:00 UTC, then zero every month since. The webhook has no onboarding feed, so nothing else fills these tables.</p></div>
+        </div></li>
+        <li><span class="num dim">5</span><div class="body">
+          <span class="what">Queue hires that finished onboarding</span>
+          <span class="detail">Adds a <code>READY</code> row per completed hire. 5 rows are still stuck at <code>READY</code>.</span>
+          <div class="tables"><span class="tbl">tJobviteToDayforceStatus · 3,537</span></div>
+        </div></li>
+        <li><span class="num dim">6</span><div class="body">
+          <span class="what">Write-back: create each hire in Dayforce</span>
+          <span class="detail">Refuses to start unless steps 1–5 finished. For each hire: check the SSN, find the hiring manager in Dayforce, search Dayforce for the person by SSN, then create a new hire, rehire a former employee, or skip (already active, not eligible for rehire, rehire already scheduled). Result: <code>COMPLETED</code> (3,409 so far) or <code>ERROR</code>.</span>
+        </div></li>
+        <li><span class="num dim">7</span><div class="body">
+          <span class="what">Email the issues report</span>
+          <span class="detail">Lists hires that errored and other data problems.</span>
+        </div></li>
+        <li><span class="num bad">8</span><div class="body">
+          <span class="what">Keep Jobvite user accounts in step with Dayforce</span>
+          <span class="detail">Runs as its own job (09, 13 and 15), not after step 7. It gives every active employee in three pay groups a Jobvite account: email from Entra ID, title from their primary position, and roles from <code>tJobviteRoleForDayforcePosition</code>, plus hiring manager for anyone with a Dayforce Manager role. It adds and updates accounts but never removes them. Step 6 depends on it: it finds a hire's manager through the hiring manager's Jobvite account.</span>
+          <div class="finding bad"><div class="head"><span class="pill bad">Failing since 4/2 · cause confirmed</span></div><p>The error is "Sequence contains more than one matching element" at <code>EmployeeProcess.cs:143</code>, which expects exactly one primary work assignment. Two Dayforce employees have two current primary assignments, and the sync crashes on exactly those two. Since then, account updates have dropped from about 2,500 a month to zero. 310 of the 367 employees hired since 4/1 have no Jobvite account.</p><p><b>Correction (3 Nov):</b> Dayforce itself is fine. The duplicates exist only in the SQL mirror: DayforceProcessor adds a row when an assignment changes but never deletes the old one. Today the blocker is leftover row 33597 for employee 0013782. From 6 May to 2 Oct the sync failed earlier still, on an empty Entra user list. <b>Fix:</b> remove the leftover rows from the mirror (a database write), and change DayforceProcessor to delete assignments Dayforce no longer has.</p></div>
+        </div></li>
+      </ol>
+
+      <div class="finding">
+        <div class="head"><span class="pill info">What it means</span></div>
+        <ul>
+          <li><b>Fix order:</b> (1) the leftover duplicate rows in the SQL mirror, which unblocks the user sync; (2) req #20726 in Jobvite, which unblocks step 2; (3) the case-sensitivity code fix for step 3. The full sequence of events is on page 4. Then let onboarding catch up. Tell HR before five months of hires flow into Dayforce at once. The SSN check should skip people HR already entered by hand.</li>
+          <li>No Jobvite hire has been created in Dayforce automatically since 5/26. Any hires since were entered some other way; confirm with HR.</li>
+          <li>When a run crashes, the program sends a failure email through the HVE email service. Find out who receives these, and whether anyone has seen five months of them.</li>
+          <li>Applications and workflow look current because the webhook (page 3) keeps writing them, not JobviteProcessor.</li>
+          <li>The failures themselves are separate from DayforceProcessor's September outage. But the matching 9/10–9/14 log gap suggests both programs run on the same VM.</li>
+          <li>The VM copy has no <code>JobviteProcessor.exe</code>, <code>WallickCommonUtilities.dll</code> or settings files. Get a complete copy as a backup before any redeploy.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro">
+        <span class="eyebrow k-back">The other two write-backs</span>
+        <h2>Nationwide Pet and ESOP</h2>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <div class="ttl"><h3>Nationwide Pet deductions</h3><span class="prog">NationwidePetFileProcess · Azure Function</span></div>
+          <ol>
+            <li>Log "Started" in run history</li>
+            <li>Download the deduction file from Nationwide's SFTP</li>
+            <li>Stage the rows in <code>tNationwidePetInsurance</code> (ID encrypted)</li>
+            <li>Find each person's Dayforce ID by SSN via the API</li>
+            <li>Add or compare the PETNATIONWIDE payroll election in Dayforce</li>
+            <li>Mark each row Added, Errors or Skipped</li>
+          </ol>
+          <dl class="facts"><dt>Trigger</dt><dd>A call to its web address, with the file path</dd><dt>Tracking</dt><dd><code>tIntegrationRunHistory</code>, <code>tNationwidePetInsurance</code> · 141</dd><dt>On failure</dt><dd>Written to run history; no email</dd></dl>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>ESOP flag</h3><span class="prog">ESOPUpdater · exe, run by hand</span></div>
+          <ol>
+            <li>Show connection details and wait for Enter</li>
+            <li>Read a CSV of associates and plan entry dates</li>
+            <li>Match them to associates in the mirror; log anyone unmatched</li>
+            <li>Add the ESOP = YES employee property in Dayforce, dated from plan entry</li>
+            <li>Log anyone who already has it, for manual review</li>
+          </ol>
+          <dl class="facts"><dt>Trigger</dt><dd>Run manually</dd><dt>Tracking</dt><dd>None</dd><dt>On failure</dt><dd>Printed to the console only</dd></dl>
+          <span class="flag">The CSV path is hard-coded to the former developer's Mac folder, and the source spreadsheet with SSNs is committed in git.</span>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 3: WEBHOOK ================= -->
+  <div class="page" id="p-webhook" data-page="webhook" hidden>    <section>
+      <div class="intro">
+        <span class="eyebrow k-solo">Page 3 · Exception 2</span>
+        <h2>The Jobvite webhook</h2>
+        <p>Jobvite pushes a message the moment a candidate or job changes. This path doesn't touch Dayforce or the SQL mirror, but it does write into the same <code>Jobvite</code> database that JobviteProcessor uses.</p>
+      </div>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 1040 260" role="img" aria-label="Jobvite sends events to WebhookEndpoint, which checks the signature and saves the raw message in the webhook storage database, then puts it on a Service Bus queue. A queue watcher fetches full details from the Jobvite API and saves candidates, applications and jobs into the Jobvite database, the same database JobviteProcessor writes to.">
+            <defs>
+              <marker id="m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="m3c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-cool" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="m3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-bad" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text class="t-head" x="20" y="24">RECEIVE</text>
+            <text class="t-head" x="460" y="24">QUEUE</text>
+            <text class="t-head" x="820" y="24">ENRICH &amp; SAVE</text>
+
+            <rect class="box" x="20" y="40" width="150" height="60" rx="6"/>
+            <text class="t-name" x="95" y="66" text-anchor="middle">Jobvite</text>
+            <text class="t-sub" x="95" y="84" text-anchor="middle">candidate / job change</text>
+            <line class="flow-cool" x1="170" y1="70" x2="216" y2="70" marker-end="url(#m3c)"/>
+            <text class="t-arrow" x="193" y="62" text-anchor="middle">posts</text>
+
+            <rect class="box-cool" x="220" y="40" width="190" height="60" rx="6"/>
+            <text class="t-mono" x="315" y="66" text-anchor="middle">WebhookEndpoint</text>
+            <text class="t-sub" x="315" y="84" text-anchor="middle">checks Jobvite's signature</text>
+            <line class="flow-cool" x1="410" y1="70" x2="456" y2="70" marker-end="url(#m3c)"/>
+            <text class="t-arrow" x="433" y="62" text-anchor="middle">saves</text>
+
+            <rect class="box" x="460" y="40" width="160" height="60" rx="6"/>
+            <text class="t-mono" x="540" y="66" text-anchor="middle">tJobviteRaw</text>
+            <text class="t-sub" x="540" y="84" text-anchor="middle">webhook storage DB</text>
+            <line class="flow-cool" x1="620" y1="70" x2="666" y2="70" marker-end="url(#m3c)"/>
+            <text class="t-arrow" x="643" y="62" text-anchor="middle">queues</text>
+
+            <rect class="box" x="670" y="40" width="130" height="60" rx="6"/>
+            <text class="t-name" x="735" y="66" text-anchor="middle">Service Bus</text>
+            <text class="t-sub" x="735" y="84" text-anchor="middle">retries on failure</text>
+            <line class="flow-cool" x1="800" y1="70" x2="836" y2="70" marker-end="url(#m3c)"/>
+
+            <rect class="box-cool" x="840" y="40" width="180" height="60" rx="6"/>
+            <text class="t-name" x="930" y="66" text-anchor="middle">Queue watcher</text>
+            <text class="t-sub" x="930" y="84" text-anchor="middle">fetches full details from API</text>
+
+            <path class="flow-cool" d="M930,100 L930,190 L766,190" marker-end="url(#m3c)"/>
+            <text class="t-arrow" x="938" y="150">writes</text>
+
+            <rect class="box-cool" x="520" y="160" width="240" height="64" rx="6"/>
+            <text class="t-name" x="640" y="186" text-anchor="middle">Jobvite database</text>
+            <text class="t-sub" x="640" y="204" text-anchor="middle">candidates · applications · jobs</text>
+
+            <rect class="box-bad" x="160" y="160" width="250" height="64" rx="6"/>
+            <text class="t-mono" x="285" y="186" text-anchor="middle">JobviteProcessor</text>
+            <text class="t-bad" x="285" y="204" text-anchor="middle">also writes here · failing (page 2)</text>
+            <line class="flow-bad" x1="410" y1="192" x2="514" y2="192" marker-end="url(#m3b)"/>
+            <text class="t-arrow" x="462" y="184" text-anchor="middle">same tables</text>
+          </svg>
+        </div>
+        <figcaption>Correction to the earlier map: the webhook doesn't feed a separate analytics database. It keeps the raw message in a webhook storage database, then updates the shared <code>Jobvite</code> database. That's why applications and workflow are current today even though JobviteProcessor is failing.</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <div class="intro">
+        <span class="eyebrow k-solo">WebhookEndpoint</span>
+        <h2>One webhook message, in order</h2>
+        <p>An Azure Function app. It runs whenever Jobvite calls it, not on a schedule.</p>
+      </div>
+      <ol class="road solo">
+        <li><span class="num">1</span><div class="body">
+          <span class="what">Receive the call and check the signature</span>
+          <span class="detail">Separate addresses for candidate and job events. A missing or wrong Jobvite signature is rejected.</span>
+        </div></li>
+        <li><span class="num">2</span><div class="body">
+          <span class="what">Save the raw message</span>
+          <span class="detail">Stored as-is with "not processed yet", so nothing is lost if a later step fails.</span>
+          <div class="tables"><span class="tbl">tJobviteRaw</span><span class="tbl">tDayforceWebhookData</span></div>
+        </div></li>
+        <li><span class="num">3</span><div class="body">
+          <span class="what">Put a message on the Service Bus queue</span>
+          <span class="detail">Only the saved row's ID goes on the queue. A failed message goes back on the queue to retry.</span>
+        </div></li>
+        <li><span class="num">4</span><div class="body">
+          <span class="what">Fetch the full record from the Jobvite API</span>
+          <span class="detail">The queue watcher looks up the complete candidate or job.</span>
+        </div></li>
+        <li><span class="num">5</span><div class="body">
+          <span class="what">Update the Jobvite database</span>
+          <span class="detail">Candidate, application workflow status or requisition. Newest workflow row today: 10/29 at 18:24.</span>
+          <div class="tables"><span class="tbl">tCandidate</span><span class="tbl">tCandidateApplication</span><span class="tbl">tCandidateApplicationWorkflowStatus</span><span class="tbl">tRequisition</span></div>
+          <div class="finding warn"><div class="head"><span class="pill warn">Shared tables</span></div><p>JobviteProcessor's step 3 writes to these same tables. Its log shows the clash is with one application ID, <code>pzjsNywa</code>, which differs only in letter case from a second application on the same candidate (see page 2, step 3). The webhook itself stored both rows without error.</p></div>
+        </div></li>
+        <li><span class="num">6</span><div class="body">
+          <span class="what">Mark the raw message processed</span>
+        </div></li>
+      </ol>
+      <div class="finding">
+        <div class="head"><span class="pill info">Notes</span></div>
+        <ul>
+          <li>The webhook only covers candidates, applications and jobs. Onboarding (new hire records and SSNs) comes only from JobviteProcessor step 4, which is why only the onboarding tables went stale.</li>
+          <li>A <code>Dayforce/All</code> address exists in the same app but only answers "OK" and saves nothing.</li>
+          <li>Failures email an alert through the HVE email service.</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 4: INCIDENT TIMELINE ================= -->
+  <div class="page" id="p-timeline" data-page="timeline" hidden>
+    <section>
+      <div class="intro">
+        <span class="eyebrow" style="color: var(--bad)">Page 4 · Incident timeline · as of 3 Nov 2026</span>
+        <h2>Why no Jobvite hire has reached Dayforce since 26 May</h2>
+        <p>Three separate bugs, a VM outage and a yearly secret expiry, placed in order with what each one caused. Pages 1–3 explain how the pieces work; this page shows when and how they broke.</p>
+      </div>
+      <div class="tl-causes" aria-label="Root causes">
+        <div class="tl-cause" style="--c: var(--a1)"><span class="k">A1 · user sync · since 2 Apr</span><b>Leftover rows in the SQL mirror</b><span>DayforceProcessor never deletes changed work assignments, so the mirror shows two primaries where Dayforce has one. From May to early October the sync failed even earlier, on an empty Entra user list.</span></div>
+        <div class="tl-cause" style="--c: var(--a3)"><span class="k">A3 · candidates · since 26 May</span><b>Program ignores letter case</b><span>The database keeps <code>pzjsNywa</code> and <code>pZjsNywA</code> apart. The program merges them when reading, then re-inserts one.</span></div>
+        <div class="tl-cause" style="--c: var(--a2)"><span class="k">A2 · requisitions · since 14 Sep</span><b>Req #20726 has a broken location</b><span>Only a location ID, no location list. Harmless as a draft; closing it made Jobvite send it, and both programs fail on it.</span></div>
+      </div>
+      <div class="tl-keys">
+        <div class="tl-key">
+          <span class="eyebrow">Dots and cards</span>
+          <ul>
+            <li><i style="background: var(--a1)"></i>A1 user sync</li>
+            <li><i style="background: var(--a3)"></i>A3 candidates</li>
+            <li><i style="background: var(--a2)"></i>A2 requisitions &amp; locations</li>
+            <li><i style="background: var(--infra)"></i>VM, secrets &amp; Dayforce</li>
+            <li><i style="background: var(--inv)"></i>Investigation</li>
+            <li><i class="ring"></i>A failure starts</li>
+          </ul>
+        </div>
+        <div class="tl-key">
+          <span class="eyebrow">Bars left of the line, left to right</span>
+          <ul>
+            <li><i class="bar" style="background: var(--a1)"></i>User sync failing (three causes in turn)</li>
+            <li><i class="bar" style="background: var(--bad)"></i>No hires sent to Dayforce</li>
+            <li><i class="bar" style="background: var(--a3)"></i>Candidate step failing (faint: hidden, still there)</li>
+            <li><i class="bar" style="background: var(--a2)"></i>Requisition step failing</li>
+            <li><i class="bar" style="background: var(--infra)"></i>Secret expiry</li>
+          </ul>
+        </div>
+      </div>
+      <figure>
+        <div class="tl-vt" id="tl-vt" role="list" aria-label="Timeline from April to December 2026">
+          <div class="tl-line" aria-hidden="true"></div>
+        </div>
+        <figcaption>Read top to bottom. Events are spaced by order, not to scale; the bars on the left show how long each failure lasted, and a fading end means it is still happening. The hatched band is the 10–14 Sep VM outage, when nothing on the VM ran. The dashed line marks today.</figcaption>
+      </figure>
+    </section>
+    <section class="tl-open">
+      <div class="intro"><h2>Still open</h2></div>
+      <ul>
+        <li><b>Req #20726:</b> a Jobvite admin should check location <code>CnV9Vfw6</code>, then give the requisition a valid location or delete it. That unblocks requisitions; the run will then stop at A3.</li>
+        <li><b>A3 code fix:</b> make the program compare IDs case-sensitively. Confirm in the deployed <code>JobviteLibrary.dll</code> first.</li>
+        <li><b>A1 data fix:</b> remove leftover row 33597 (and 22137, 23797) from the mirror, then fix DayforceProcessor so it removes assignments Dayforce no longer has.</li>
+        <li><b>New workflow status (questions.txt #2, #5):</b> "Reject - Screening Form Failed" isn't in <code>tWorkflowState</code>. The status list hasn't been refreshed since 10 Sep, the webhook refuses to save a status it doesn't know, and JobviteProcessor only asks Jobvite for 30 hardcoded statuses that don't include it. Those moves are lost in SQL until the code list and the status table are both updated.</li>
+        <li><b>Entra user list (A1):</b> find out what failed from 6 May and what was fixed on 2 Oct, so it doesn't recur.</li>
+        <li><b>VM outage cause:</b> check the Azure Activity Log before about 9 Dec, when entries for 10 Sep expire.</li>
+        <li><b>Location edit (questions.txt #4):</b> ask the TA manager when they changed which location. Any change after 10 Sep hasn't reached <code>tLocation</code>.</li>
+        <li><b>Before restarting onboarding:</b> warn HR that hires since May will flow into Dayforce in one run.</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 5: ISSUES & FIXES ================= -->
+  <div class="page" id="p-issues" data-page="issues" hidden>
+    <section>
+      <div class="intro">
+        <span class="eyebrow" style="color: var(--warn)">Page 5 · Issues &amp; fixes · as of 3 Nov 2026</span>
+        <h2>Everything we found, and what to do about each</h2>
+        <p>One card per issue: the problem as people see it, what actually happened, and the fix with who can do it. Nothing here has been fixed yet. Page 4 shows the same issues on a timeline.</p>
+      </div>
+      <div class="finding">
+        <div class="head"><span class="pill info">Suggested fix order</span></div>
+        <ol class="is-order">
+          <li><b>Jobvite admin:</b> fix req #20726 (issue 1) and restore the new-application webhook event (issue 5). No code; unblocks the main run and new-application data.</li>
+          <li><b>Database owner:</b> delete the leftover work-assignment rows for 0013782 (issue 4). Unblocks the user sync.</li>
+          <li><b>Warn HR</b> that hires since 26 May will flow into Dayforce once onboarding restarts (issue 3).</li>
+          <li><b>One rebuild and deploy</b> covering the code fixes: case-sensitive IDs (2), null checks (1), the new status in the hardcoded list (6), and DayforceProcessor deleting old assignments (4). Needs the deploy runbook.</li>
+          <li><b>Backfill:</b> a full candidate catch-up since 1 Oct and re-processing of the rejected webhook notices (5, 6). Watch the first full run closely.</li>
+          <li><b>Prevent repeats:</b> Azure secret expiry (9), Entra user list (4), VM outage cause (8).</li>
+        </ol>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro"><span class="eyebrow">JobviteProcessor main run</span></div>
+      <div class="is-list">
+        <article class="is-card" style="--c: var(--a2)">
+          <div class="is-head"><span class="is-id">1 · A2</span><h3>Requisition step crashes on every run</h3><div class="is-pills"><span class="pill bad">Active since 14 Sep</span><span class="pill ok">Cause confirmed</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>JobviteProcessor stops at its first data step, so nothing after it runs: candidates, onboarding, hires into Dayforce, the report, and the refresh of locations and workflow statuses.</p></div>
+            <div><h4>What happened</h4><p>Req #20726 "Community Manager" (<code>oCPwAfwh</code>) has a location ID (<code>CnV9Vfw6</code>) but no location list. It was harmless as a draft from 21 Jul; when it was closed on 14 Sep Jobvite started sending it. The code assumes every job has a location list and crashes at <code>JobviteLibrary.cs:685</code>. The window stays stuck at 10 Sep, so it repeats every run. The webhook fails on the same job.</p></div>
+            <div><h4>Fix</h4><ul><li><span class="who">Jobvite admin · no code</span>Open #20726, check location <code>CnV9Vfw6</code>, then give it a valid location or delete it.</li><li><span class="who">Code + deploy</span>Treat a missing list as empty at lines 668 and 685 and in <code>RequisitionLocation.cs:25</code>.</li><li>After the admin fix, expect the run to stop at issue 2 next.</li></ul></div>
+          </div>
+        </article>
+
+        <article class="is-card" style="--c: var(--a3)">
+          <div class="is-head"><span class="is-id">2 · A3</span><h3>Candidate step fails on two applications that differ only in letter case</h3><div class="is-pills"><span class="pill warn">Hidden behind issue 1</span><span class="pill warn">Very likely</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>From 26 May to 10 Sep every main run failed at candidates. It will come back as soon as issue 1 is fixed.</p></div>
+            <div><h4>What happened</h4><p>Candidate eZFOCtw2 applied for two jobs and got application IDs <code>pzjsNywa</code> and <code>pZjsNywA</code>. The database treats case as meaningful and stores both; the program is set to ignore case (<code>JobviteContext.cs:107-126</code>), merges them when reading, thinks one is missing, and its re-insert is refused as a duplicate.</p></div>
+            <div><h4>Fix</h4><ul><li><span class="who">Code + deploy</span>Make the ID comparison case-sensitive, matching the database. No data change; both applications are real.</li><li>Confirm in the deployed <code>JobviteLibrary.dll</code> first (needs a decompiler).</li></ul></div>
+          </div>
+        </article>
+
+        <article class="is-card" style="--c: var(--bad)">
+          <div class="is-head"><span class="is-id">3 · A4</span><h3>No Jobvite hire has reached Dayforce since 26 May</h3><div class="is-pills"><span class="pill bad">Active since 26 May</span><span class="pill ok">Confirmed</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>New hires who finish onboarding in Jobvite are not created in Dayforce automatically.</p></div>
+            <div><h4>What happened</h4><p>The onboarding and write-back steps aren't broken; they sit after issues 2 and 1 in the run and haven't been reached since 26 May. Onboarding has no webhook, so nothing else fills those tables.</p></div>
+            <div><h4>Fix</h4><ul><li>Fixing issues 1 and 2 restarts it. The first run asks Jobvite for everything since 26 May.</li><li><span class="who">HR</span>Warn them first: five months of hires arrive in one run. People already entered by hand should be skipped by the SSN check; spot-check a few.</li><li>Watch that first run: these steps haven't run for months.</li></ul></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro"><span class="eyebrow">JobviteProcessor user sync (09, 13, 15)</span></div>
+      <div class="is-list">
+        <article class="is-card" style="--c: var(--a1)">
+          <div class="is-head"><span class="is-id">4 · A1</span><h3>Jobvite user accounts not created or updated since 2 Apr</h3><div class="is-pills"><span class="pill bad">Active since 2 Apr</span><span class="pill ok">Cause confirmed</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>310 of 367 people hired since April have no Jobvite account; titles, roles and managers in Jobvite are frozen. New managers can't be picked as hiring managers.</p></div>
+            <div><h4>What happened</h4><p>Three causes in turn. 2 Apr – 5 May and 2 Oct – now: an employee appears to have two primary work assignments. Dayforce is fine; the SQL mirror keeps old assignment rows because DayforceProcessor never deletes them (leftover row 33597 for 0013782 today). 6 May – 2 Oct: the Entra user list came back empty and the sync died on its first record; someone fixed that on 2 Oct.</p></div>
+            <div><h4>Fix</h4><ul><li><span class="who">DB owner · data write</span>Delete leftover rows 33597, 22137, 23797 (and their 3,631 analytics rows first). Script given, not run.</li><li><span class="who">Code + deploy</span>DayforceProcessor: delete assignments Dayforce no longer has (<code>AssociateDatabase.cs:771</code>). Sync: handle a duplicate instead of crashing.</li><li><span class="who">IT</span>Find what broke the Entra list on 6 May and what fixed it, so it doesn't recur.</li><li>Then measure how many other leftover rows the mirror holds; every report on work assignments is affected.</li></ul></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro"><span class="eyebrow">Data missing in SQL (questions.txt)</span></div>
+      <div class="is-list">
+        <article class="is-card" style="--c: var(--a3)">
+          <div class="is-head"><span class="is-id">5 · Q1</span><h3>New applications dropped from 2,435 in September to 592 in October</h3><div class="is-pills"><span class="pill bad">Active since ~6 Oct</span><span class="pill ok">Not a BI issue</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>BI shows far fewer new applications from October. The data is missing in SQL, so BI is reporting correctly.</p></div>
+            <div><h4>What happened</h4><p>Around 6 Oct Jobvite stopped sending the "new application" webhook notice (<code>null → New</code>: 655 notices from 25 Sep to 5 Oct, almost none after). Applications now reach SQL only when a recruiter moves them on; untouched ones and screening-form rejects never arrive. JobviteProcessor's catch-up would fill the gap, but it's down (issue 1).</p></div>
+            <div><h4>Fix</h4><ul><li><span class="who">Jobvite admin · no code</span>Check what changed 1–6 Oct and whether the new-application webhook event is still enabled; restore it.</li><li>Fix issue 1 so the catch-up runs again.</li><li><span class="who">Backfill</span>Full candidate catch-up since 1 Oct.</li><li>Pin the exact date with the daily <code>null → New</code> count query.</li></ul></div>
+          </div>
+        </article>
+
+        <article class="is-card" style="--c: var(--a3)">
+          <div class="is-head"><span class="is-id">6 · Q2, Q5</span><h3>New workflow status "Rejected - Screening Form Failed" never reaches SQL</h3><div class="is-pills"><span class="pill bad">Active since 1 Oct</span><span class="pill ok">Confirmed</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>Jobvite shows hundreds of applications in the new status; SQL shows none.</p></div>
+            <div><h4>What happened</h4><p>The status went live 1 Oct. SQL's status list (<code>tWorkflowState</code>) hasn't refreshed since 10 Sep because that refresh sits after the issue-1 crash. The webhook refuses statuses it doesn't know: all 290 notices for this status failed. JobviteProcessor also only asks Jobvite for 30 hardcoded statuses (<code>JobviteAPI.cs:242-271</code>), which don't include it.</p></div>
+            <div><h4>Fix</h4><ul><li>Fix issue 1; the next main run refreshes the status list.</li><li><span class="who">Code + deploy</span>Add the new status to the hardcoded list; consider removing the hardcoded list altogether.</li><li><span class="who">Backfill</span>Re-process the 290 failed notices.</li><li>Find out why the webhook's own status refresh doesn't work.</li></ul></div>
+          </div>
+        </article>
+
+        <article class="is-card" style="--c: var(--a2)">
+          <div class="is-head"><span class="is-id">7 · Q4</span><h3>Location edits in Jobvite don't reach <code>tLocation</code></h3><div class="is-pills"><span class="pill bad">Active since 10 Sep</span><span class="pill ok">Confirmed</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>A talent acquisition manager changed a location; SQL still shows the old one.</p></div>
+            <div><h4>What happened</h4><p><code>tLocation</code> is a copy of Jobvite's location list, reloaded in full while processing job postings. That reload sits two lines after the issue-1 crash, so it last ran on 10 Sep 08:00. Any change after that hasn't arrived.</p></div>
+            <div><h4>Fix</h4><ul><li>Fix issue 1; the next main run reloads locations.</li><li>Ask the TA manager when they made the change and to which location, to confirm.</li></ul></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro"><span class="eyebrow">Infrastructure and DayforceProcessor</span></div>
+      <div class="is-list">
+        <article class="is-card" style="--c: var(--infra)">
+          <div class="is-head"><span class="is-id">8 · D</span><h3>VM outage, 10 – 14 Sep</h3><div class="is-pills"><span class="pill warn">Cause unknown</span><span class="pill bad">Evidence expires ~9 Dec</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>For four days nothing on the VM ran: no JobviteProcessor and no DayforceProcessor runs.</p></div>
+            <div><h4>What happened</h4><p>Both programs went silent between 09:03 and 10:00 on Thu 10 Sep and came back between 18:00 and 23:00 on Mon 14 Sep. No run was cut off mid-way; scheduled runs simply didn't start. Unrelated to issue 1, which happened to surface the same day.</p></div>
+            <div><h4>Fix</h4><ul><li><span class="who">IT / Azure</span>Check the VM's Azure Activity Log for 9–15 Sep before about 9 Dec, when it expires.</li><li>On the VM: Event Viewer system log (6005, 6006, 1074, 41) and Task Scheduler history.</li><li>Ask who brought it back on 14 Sep.</li></ul></div>
+          </div>
+        </article>
+
+        <article class="is-card" style="--c: var(--infra)">
+          <div class="is-head"><span class="is-id">9 · B1</span><h3>Yearly Azure secret expiry stops both programs every September</h3><div class="is-pills"><span class="pill warn">Will recur Sep 2027</span><span class="pill warn">Likely</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>DayforceProcessor was down 16 – 25 Sep; JobviteProcessor failed earlier still until about 23 Sep. The same happened in September 2024 and 2025.</p></div>
+            <div><h4>What happened</h4><p>The VM signs in to Azure with an app secret that appears to last one year. When it expires the programs can't read their passwords from Key Vault, and the logs hide the real error.</p></div>
+            <div><h4>Fix</h4><ul><li><span class="who">IT</span>Confirm the secret's expiry date in Entra ID and set a reminder before it.</li><li>Better: switch the VM to a managed identity so there's no secret to expire.</li><li><span class="who">Code</span>Log Key Vault errors instead of swallowing them.</li></ul></div>
+          </div>
+        </article>
+
+        <article class="is-card" style="--c: var(--infra)">
+          <div class="is-head"><span class="is-id">10 · Q3</span><h3>Pay Summary stopped refreshing</h3><div class="is-pills"><span class="pill warn">Open</span></div></div>
+          <div class="is-grid">
+            <div><h4>Problem</h4><p>The last Pay Summary write was 27 Oct.</p></div>
+            <div><h4>What happened</h4><p>Not yet investigated past page 1's findings: the handoff document's "flag is off" cause doesn't match the VM, and some runs end silently inside the Pay Summary step.</p></div>
+            <div><h4>Fix</h4><ul><li>Copy the newest DayforceProcessor logs from the VM (ours end 21 Sep) and check where the October runs stop.</li></ul></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro"><span class="eyebrow">Smaller code gaps found along the way</span></div>
+      <div class="tablewrap">
+        <table class="is-minor">
+          <thead><tr><th>Gap</th><th>Effect and fix</th></tr></thead>
+          <tbody>
+            <tr><td>Write-back leaves a hire at PROCESSING (A5)</td><td>If the Dayforce SSN search errors, the hire is skipped silently and never reported. Set ERROR with the message. Not yet checked in SQL.</td></tr>
+            <tr><td>Terminated employees keep Jobvite access (A6)</td><td>The sync loads leavers but the disable code is commented out. Decide with the business whether leavers should be deactivated.</td></tr>
+            <tr><td>Entra mismatches go unreported (A7)</td><td>No match or two matches leaves an email or manager blank, with a "TODO: notify". Add a report line.</td></tr>
+            <tr><td>Manager without an email crashes DayforceProcessor (B4)</td><td>Caused the 20 Aug – 3 Sep outage. Handle a missing contact instead of assuming one exists.</td></tr>
+            <tr><td><code>/UpdatePaySummarySkip</code> skips the wrong step (B5)</td><td>It turns off associate updates instead of Pay Summary. One-line fix.</td></tr>
+            <tr><td>Secrets and SSNs committed in git (B6)</td><td>ServiceNow login, Entra secret, Jobvite key, ESOP spreadsheet. Rotate the secrets, then remove them from the repo.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <div class="intro">
+        <span class="eyebrow" style="color: var(--ok)">Monitor and prevent</span>
+        <h2>Catch the next failure in a day, not five months</h2>
+        <p>Almost every issue above ran for weeks before anyone noticed. The programs do send failure emails, but nobody acted on them. The checks below are cheap: most are one SQL query run daily, or one Power BI tile with an alert.</p>
+      </div>
+
+      <h3>Monitor: daily checks</h3>
+      <div class="tablewrap">
+        <table class="is-minor">
+          <thead><tr><th>Check</th><th>How, and when to alert</th><th>Would have caught</th></tr></thead>
+          <tbody>
+            <tr><td><b>Did every scheduled run happen?</b></td><td>Count run logs or <code>tProcessStatusLog</code> entries per slot. Alert if a program misses two slots in a row. Add an Azure Monitor availability alert on the VM.</td><td>VM outage (8) within 2–3 hours, not 4 days</td></tr>
+            <tr><td><b>Did each step finish?</b></td><td>Last "Finished" time per step: requisitions, candidates, onboarding, write-back, user sync, DayforceProcessor steps. Alert if a step hasn't finished in 24 hours.</td><td>Issues 1, 2, 3, 4, 10 on day one</td></tr>
+            <tr><td><b>Is data still arriving?</b></td><td>Daily freshness: newest row in <code>tOBNewHire</code>, newest <code>COMPLETED</code> hire in <code>tJobviteToDayforceStatus</code>, newest Pay Summary write, newest mirror write. Alert past a set age (for example 2 business days).</td><td>Issues 3, 10, and the Dayforce outages</td></tr>
+            <tr><td><b>Does the volume look normal?</b></td><td>New applications per weekday and "New" status rows per weekday against the last 4 weeks. Alert if below half.</td><td>The October drop (5) on 7 Oct</td></tr>
+            <tr><td><b>Is the webhook rejecting messages?</b></td><td>Daily count of <code>tJobviteRaw</code> rows with <code>IsProcessed = 0</code>, grouped by status name, plus the count of <code>null → New</code> notices. Alert on any unprocessed spike or zero new-application notices on a weekday.</td><td>Issues 5 and 6 on 1–2 Oct; issue 1 on 14 Sep</td></tr>
+            <tr><td><b>Route failure emails somewhere watched</b></td><td>Send the HVE failure emails to a shared mailbox or Teams channel with a named owner, and confirm today's recipients still exist.</td><td>All of them</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Prevent: fixes that remove the cause</h3>
+      <div class="cards">
+        <article class="card">
+          <div class="ttl"><h3>Make the code fail small</h3><span class="prog">Developer</span></div>
+          <ol>
+            <li>One bad record should skip that record and be reported, not stop the whole run (requisitions, candidates, user sync).</li>
+            <li>Treat missing lists as empty everywhere the code reads API data.</li>
+            <li>Compare IDs the same way the database does (case-sensitive).</li>
+            <li>Drop the hardcoded list of 30 statuses; fetch all and map unknown ones.</li>
+            <li>When a status or location is unknown, refresh the list and retry instead of rejecting the message.</li>
+            <li>Log the real error when Key Vault or Entra fails, instead of hiding it.</li>
+          </ol>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>Keep the mirror honest</h3><span class="prog">Developer · data owner</span></div>
+          <ol>
+            <li>DayforceProcessor should delete work assignments Dayforce no longer has.</li>
+            <li>One-time clean-up of existing leftover rows, after measuring how many there are.</li>
+            <li>A weekly check for employees with zero or several current primary assignments in the mirror.</li>
+            <li>A periodic spot-check of a few employees: mirror against the Dayforce screen.</li>
+          </ol>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>Coordinate Jobvite changes</h3><span class="prog">HR · Jobvite admin · IT</span></div>
+          <ol>
+            <li>Agree that new workflow statuses, screening forms, locations, templates or webhook settings are flagged to IT before going live.</li>
+            <li>A short checklist for each change: does the integration know the new value, are the webhook events still on, does a test applicant reach SQL?</li>
+            <li>Avoid closing or using jobs that have no location.</li>
+          </ol>
+        </article>
+        <article class="card">
+          <div class="ttl"><h3>Secrets, deploys and ownership</h3><span class="prog">IT</span></div>
+          <ol>
+            <li>Switch the VM to a managed identity, or at least set expiry alerts on the Azure app secret and the Entra credential.</li>
+            <li>Deploy only from committed code, through the existing <code>azure-pipelines.yml</code> or the written runbook, and record which commit is live.</li>
+            <li>Stamp a real version number in each log header (today every build says 1.0.0.0).</li>
+            <li>Name an owner for the integrations and keep this map current.</li>
+          </ol>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <p class="note">Based on the source code, the VM-DayforceProcessor folder (logs through 21 Sept 2026), the notes <code>PaySummary-Issue-Diagnosis.md</code>, <code>PaySummary-Issue-Handoff.html</code> and <code>Dayforce-VMJob-Troubleshooting-Summary.md</code>, the VM-JobviteProcessor folder (logs through 30 Oct 2026), and read-only queries against the <code>Dayforce</code> and <code>Jobvite</code> databases on 29–30 Oct 2026. The repo shows what each program is built to do; it doesn't show which programs are scheduled today or on which machines. Only the DayforceProcessor and JobviteProcessor VM folders have been seen.</p>
+</main>
+
+<script>
+/* Page 4: incident timeline. Builds the rows once; draws bars and bands whenever the page is visible. */
+var drawTimeline = (function () {
+  var EV = [
+    { d: "2026-04-01T11:57", t: "a1", when: "1 Apr · 11:57", title: "Assignment edited in Dayforce", text: "Employee 0014427 moves to Senior Community Manager. The mirror adds the new assignment but keeps the old one, so it now shows two primaries.", tag: "A1 · confirmed" },
+    { d: "2026-04-02T09:00", t: "a1", fail: true, when: "2 Apr · 09:00", title: "User sync starts crashing", text: "One person with two primaries stops the whole sync. No Jobvite accounts created or updated since: 310 of 367 new hires have none.", tag: "A1 · confirmed" },
+    { d: "2026-05-06T09:04", t: "a1", fail: true, when: "6 May · 09:04", title: "Entra user list comes back empty", text: "The sync now dies on its very first record, before reaching anyone's assignments. Lasts five months. Cause not confirmed.", tag: "A1 · confirmed" },
+    { d: "2026-05-26T18:02", t: "a3", when: "26 May · 18:02", title: "Last complete main run", text: "The last hire reaches Dayforce at 19:54. Nothing has been sent since.", tag: "Last good" },
+    { d: "2026-05-26T21:32", t: "a3", when: "26 May · 21:32", title: "Two case-twin applications", text: "Candidate eZFOCtw2 applies for two jobs. Jobvite issues <code>pzjsNywa</code> and <code>pZjsNywA</code>; the webhook stores both.", tag: "A3 · trigger" },
+    { d: "2026-05-26T23:00", t: "a3", fail: true, when: "26 May · 23:00", title: "Candidate step starts failing", text: "Reading ignores case, so <code>pzjsNywa</code> looks missing. The re-insert is refused and the run ends. Onboarding and Dayforce hires stop.", tag: "A3 · very likely" },
+    { d: "2026-07-21T21:26", t: "a2", when: "21 Jul · 21:26", title: "Req #20726 saved as a draft", text: "Community Manager, backfill template. Location ID <code>CnV9Vfw6</code> only, no location list. Jobvite doesn't send drafts, so harmless.", tag: "A2 · confirmed" },
+    { d: "2026-08-20T23:59", t: "a1", when: "20 Aug", title: "0014427 terminated", text: "Leaves the sync's list, so their leftover duplicate stops mattering. The sync is still failing on the empty Entra list at this point.", tag: "A1" },
+    { d: "2026-09-10T08:00", t: "a2", when: "10 Sep · 08:00", title: "Last good requisition step", text: "Also the last refresh of <code>tLocation</code> and of the workflow-status list. The requisition window has been stuck at this date since.", tag: "A2 · last good" },
+    { d: "2026-09-10T09:30", t: "infra", when: "10 Sep ~09:30 → 14 Sep", title: "VM outage", text: "No scheduled runs for either program for four days. Cause not known yet.", tag: "Open" },
+    { d: "2026-09-14T10:08", t: "a2", when: "14 Sep · 10:08", title: "#20726 closed straight from draft", text: "Now visible to the API. The webhook fails on the missing location list. The VM is still down.", tag: "A2 · confirmed" },
+    { d: "2026-09-14T23:00", t: "a2", fail: true, when: "14 Sep · 23:00", title: "Requisition step starts failing", text: "First run after the VM returns crashes at line 685, before the location refresh. Every run since. A3 is now hidden behind it.", tag: "A2 · confirmed" },
+    { d: "2026-09-16T16:00", t: "infra", fail: true, when: "16 Sep", title: "Yearly secret expiry", text: "DayforceProcessor down until 25 Sep. JobviteProcessor dies earlier still, on a \"json\" error, until about 23 Sep.", tag: "Likely" },
+    { d: "2026-09-21T12:10", t: "a1", when: "21 Sep · 12:10", title: "0013782 assignments edited", text: "Dayforce keeps one primary. The mirror keeps leftover row 33597 as a second primary, ready to stop the sync once the Entra issue clears.", tag: "A1 · confirmed" },
+    { d: "2026-09-26T00:15", t: "infra", when: "26 Sep", title: "Mirror writes resume", text: "DayforceProcessor recovers after the secret is renewed. Jobvite runs return to the line 685 crash.", tag: "Recovered" },
+    { d: "2026-10-02T15:00", t: "a1", fail: true, when: "2 Oct · 13:00–15:00", title: "Entra list fixed, sync hits 0013782", text: "Someone fixes the Entra user list. The 15:00 sync gets to record 195 and crashes on leftover row 33597. Still the case today.", tag: "A1 · confirmed" },
+    { d: "2026-10-27T14:42", t: "infra", when: "27 Oct", title: "Last Pay Summary write", text: "Nothing written on 28 or 29 Oct. A separate open issue for DayforceProcessor (page 1).", tag: "Open" },
+    { d: "2026-10-30T09:00", t: "inv", when: "30 Oct", title: "VM folder copied", text: "11,060 JobviteProcessor logs from Jan 2024 make the failures traceable run by run.", tag: "Evidence" },
+    { d: "2026-11-03T15:00", t: "inv", when: "3 Nov", title: "Root causes found", text: "Leftover mirror rows (A1), req #20726 via the webhook inbox (A2), the case mismatch in the code (A3), and the frozen workflow-status list.", tag: "Today" },
+    { d: "2026-12-09T00:00", t: "bad", when: "~9 Dec", title: "Activity Log deadline", text: "Azure keeps the VM's activity log for 90 days. After this, the 10 Sep outage can't be traced there.", tag: "Deadline" }
+  ];
+  var LANES = [
+    { from: "2026-04-02T09:00", to: "2026-05-06T09:04", t: "a1", col: 0, label: "User sync: duplicate primary (0014427)" },
+    { from: "2026-05-06T09:04", to: "2026-10-02T15:00", t: "a1", col: 0, label: "User sync: Entra user list empty" },
+    { from: "2026-10-02T15:00", to: "2026-11-03T15:00", t: "a1", col: 0, label: "User sync: duplicate primary (0013782)", open: true },
+    { from: "2026-05-26T23:00", to: "2026-11-03T15:00", t: "bad", col: 1, label: "No hires sent to Dayforce", open: true },
+    { from: "2026-05-26T23:00", to: "2026-09-10T08:00", t: "a3", col: 2, label: "Candidate step failing" },
+    { from: "2026-09-14T23:00", to: "2026-11-03T15:00", t: "a3", col: 2, label: "Candidate bug hidden behind requisitions", hidden: true, open: true },
+    { from: "2026-09-14T23:00", to: "2026-11-03T15:00", t: "a2", col: 3, label: "Requisition step failing", open: true },
+    { from: "2026-09-16T16:00", to: "2026-09-26T00:15", t: "infra", col: 4, label: "Secret expiry" }
+  ];
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var vt = document.getElementById("tl-vt");
+  function el(tag, cls, css) { var n = document.createElement(tag); if (cls) n.className = cls; if (css) n.style.cssText = css; return n; }
+
+  var dots = [], lastMonth = -1;
+  EV.forEach(function (e) {
+    var dt = new Date(e.d);
+    if (dt.getMonth() !== lastMonth) {
+      lastMonth = dt.getMonth();
+      var m = el("div", "tl-month");
+      m.setAttribute("aria-hidden", "true");
+      m.appendChild(el("span"));
+      m.appendChild(el("span", "tl-mtick"));
+      m.appendChild(el("h3")).textContent = MONTHS[lastMonth] + " " + dt.getFullYear();
+      vt.appendChild(m);
+    }
+    var row = el("div", "tl-row", "--c:var(--" + e.t + ")");
+    row.setAttribute("role", "listitem");
+    row.appendChild(el("span"));
+    var cell = el("span", "tl-dotcell");
+    var dot = el("span", "tl-dot" + (e.fail ? " fail" : ""));
+    cell.appendChild(dot);
+    row.appendChild(cell);
+    var card = el("div", "tl-card" + (e.fail ? " fail" : ""));
+    card.innerHTML = '<span class="tl-when">' + e.when + '</span><span class="tl-tag">' + e.tag + '</span><h3>' + e.title + '</h3><p>' + e.text + '</p>';
+    row.appendChild(card);
+    vt.appendChild(row);
+    dots.push(dot);
+  });
+
+  var T = EV.map(function (e) { return new Date(e.d).getTime(); });
+  var overlays = [];
+  return function draw() {
+    if (!vt.offsetParent) return;           // page hidden: nothing to measure
+    overlays.forEach(function (n) { n.remove(); });
+    overlays = [];
+    var base = vt.getBoundingClientRect().top;
+    var Y = dots.map(function (d) { var r = d.getBoundingClientRect(); return r.top + r.height / 2 - base; });
+    function yAt(iso) {
+      var t = new Date(iso).getTime();
+      if (t <= T[0]) return Y[0];
+      for (var i = 1; i < T.length; i++) {
+        if (t <= T[i]) return Y[i - 1] + (Y[i] - Y[i - 1]) * (t - T[i - 1]) / (T[i] - T[i - 1]);
+      }
+      return Y[Y.length - 1];
+    }
+    var lw = parseFloat(getComputedStyle(document.getElementById("p-timeline")).getPropertyValue("--lane-w")) || 12;
+    function add(n) { n.setAttribute("aria-hidden", "true"); vt.appendChild(n); overlays.push(n); }
+    var o1 = yAt("2026-09-10T09:03"), o2 = yAt("2026-09-14T23:00");
+    var band = el("div", "tl-outage", "top:" + (o1 - 6) + "px;height:" + (o2 - o1 + 12) + "px");
+    band.appendChild(el("span")).textContent = "VM outage";
+    add(band);
+    LANES.forEach(function (L) {
+      var a = yAt(L.from), b = yAt(L.to);
+      var bar = el("div", "tl-lane" + (L.open ? " is-open" : "") + (L.hidden ? " is-hidden" : ""),
+        "left:" + (8 + L.col * lw) + "px;top:" + a + "px;height:" + Math.max(b - a, 6) + "px;--c:var(--" + L.t + ")");
+      bar.title = L.label;
+      add(bar);
+    });
+    var ty = yAt("2026-11-03T15:00");
+    var today = el("div", "tl-today", "top:" + (ty + 22) + "px");
+    today.appendChild(el("span")).textContent = "today ↑";
+    add(today);
+  };
+})();
+
+(function () {
+  var pages = ["ingest", "writebacks", "webhook", "timeline", "issues"];
+  function show() {
+    var k = (location.hash || "").replace("#", "");
+    if (pages.indexOf(k) < 0) k = "ingest";
+    pages.forEach(function (p) {
+      document.getElementById("p-" + p).hidden = (p !== k);
+      var a = document.querySelector('nav.tabs a[data-k="' + p + '"]');
+      if (p === k) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+    if (k === "timeline") requestAnimationFrame(drawTimeline);
+  }
+  window.addEventListener("hashchange", function () { show(); window.scrollTo(0, document.querySelector("nav.tabs").offsetTop - 12); });
+  var rt;
+  window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(drawTimeline, 120); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawTimeline);
+  show();
+})();
+</script>
+</body>
+</html>

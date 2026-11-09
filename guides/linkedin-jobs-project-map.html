@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LinkedIn Jobs Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* Same dark operations-console look as dayforce-integration-map.html. Five hash-routed pages; each opens with a map, then a numbered run order. Dashed boxes = not built yet. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1317;
+  --surface: #151c22;
+  --raise: #1c252d;
+  --fg: #e3e8eb;
+  --muted: #94a1ab;
+  --line: #2c3842;
+  --accent: #4fc1b4;      /* monthly pipeline */
+  --accent-soft: #12302d;
+  --warm: #e9a35e;        /* LLM module */
+  --warm-soft: #33251a;
+  --cool: #9fb2f5;        /* external services, views */
+  --cool-soft: #1d2440;
+  --bad: #f2776b;
+  --bad-soft: #3a1c1a;
+  --warn: #e8c46a;
+  --warn-soft: #33291a;
+  --ok: #72cf98;
+  --ok-soft: #16301f;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body);
+  font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 36px 64px;
+}
+main { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; letter-spacing: .005em; }
+h1 { font-size: 34px; line-height: 1.1; }
+h2 { font-size: 23px; line-height: 1.2; }
+h3 { font-size: 17px; line-height: 1.25; }
+p { margin: 0; }
+code, .mono { font-family: var(--font-mono); font-size: .88em; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+header.top { display: flex; flex-direction: column; gap: 10px; }
+.eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); font-size: 16px; max-width: 72ch; }
+
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--c, var(--line)); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat b { font-family: var(--font-display); font-size: 16px; }
+.stat span { color: var(--muted); font-size: 13px; }
+
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); }
+nav.tabs a { text-decoration: none; color: var(--muted); padding: 10px 14px 11px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: baseline; font-weight: 600; margin-bottom: -1px; }
+nav.tabs a .n { font-family: var(--font-mono); font-size: 12px; }
+nav.tabs a:hover { color: var(--fg); }
+nav.tabs a[aria-current="page"] { color: var(--fg); background: var(--surface); border-color: var(--line); border-bottom: 1px solid var(--surface); }
+nav.tabs a[data-k="overview"][aria-current="page"] .n { color: var(--fg); }
+nav.tabs a[data-k="pipeline"][aria-current="page"] .n { color: var(--accent); }
+nav.tabs a[data-k="database"][aria-current="page"] .n { color: var(--cool); }
+nav.tabs a[data-k="llm"][aria-current="page"] .n { color: var(--warm); }
+nav.tabs a[data-k="files"][aria-current="page"] .n { color: var(--ok); }
+nav.tabs a[data-k="sample"][aria-current="page"] .n { color: var(--warn); }
+
+/* Sample Run page: small data tables, with new and changed rows marked */
+.sr-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+.sr-t { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sr-t .cap { font-family: var(--font-mono); font-size: 11.5px; color: var(--cool); }
+.sr-t table { font-size: 12.5px; }
+.sr-t th, .sr-t td { padding: 5px 9px; }
+.sr-t td { font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; }
+.sr-t tr.new td { background: var(--ok-soft); }
+.sr-t tr.upd td { background: var(--warn-soft); }
+.sr-t td.null { color: var(--muted); font-style: italic; }
+.sr-t .empty { color: var(--muted); font-size: 12.5px; padding: 8px 10px; }
+.sr-key { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
+.sr-key i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+pre.sr-yaml { margin: 0; background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-family: var(--font-mono); font-size: 12px; overflow-x: auto; }
+
+[hidden] { display: none !important; }  /* .page's display:flex would otherwise override the hidden attribute */
+.page { display: flex; flex-direction: column; gap: 36px; }
+.page > section { display: flex; flex-direction: column; gap: 14px; }
+.intro { display: flex; flex-direction: column; gap: 8px; max-width: 76ch; }
+.intro p { color: var(--muted); }
+.k-main { color: var(--accent); } .k-llm { color: var(--warm); } .k-ext { color: var(--cool); }
+
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.scroll svg { display: block; width: 100%; min-width: 760px; height: auto; }
+figcaption { color: var(--muted); font-size: 13.5px; max-width: 80ch; }
+
+ol.road { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+ol.road > li { display: grid; grid-template-columns: 44px 1fr; column-gap: 14px; position: relative; padding-bottom: 18px; }
+ol.road > li::before { content: ""; position: absolute; left: 21px; top: 30px; bottom: 0; width: 2px; background: var(--line); }
+ol.road > li:last-child::before { display: none; }
+.num { width: 44px; height: 30px; border-radius: 6px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 12.5px; background: var(--raise); border: 1px solid var(--line); color: var(--muted); position: relative; z-index: 1; }
+.road.main .num { color: var(--accent); }
+.road.llm .num { color: var(--warm); }
+.num.dim { border-style: dashed; }
+.body { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-top: 3px; }
+.body .what { font-weight: 600; }
+.body .detail { color: var(--muted); font-size: 14px; max-width: 78ch; }
+.tables { display: flex; flex-wrap: wrap; gap: 6px; }
+.tbl { font-family: var(--font-mono); font-size: 11.5px; padding: 2px 8px; border-radius: 4px; background: var(--raise); border: 1px solid var(--line); color: var(--fg); }
+.tbl.file { color: var(--accent); }
+.tbl.db { color: var(--cool); }
+.tbl.todo { border-style: dashed; color: var(--muted); }
+
+.finding { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; max-width: 86ch; }
+.finding.warn { border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); background: var(--warn-soft); }
+.finding.ok { border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); background: var(--ok-soft); }
+.finding .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.finding p, .finding li { font-size: 14px; }
+.finding ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.pill { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.warn { color: var(--warn); } .pill.ok { color: var(--ok); } .pill.info { color: var(--muted); } .pill.llm { color: var(--warm); }
+
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: none; }
+th { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td:first-child { white-space: nowrap; }
+td.grp { font-family: var(--font-display); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--raise); }
+
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card .ttl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: baseline; }
+.card .prog { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+.card p { font-size: 14px; }
+dl.facts { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 13px; border-top: 1px solid var(--line); padding-top: 10px; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; min-width: 0; }
+@media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+
+.note { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; max-width: 86ch; }
+
+/* SVG drawing classes */
+svg text { font-family: var(--font-body); fill: var(--fg); }
+svg .t-name { font-size: 13.5px; font-weight: 600; }
+svg .t-mono { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+svg .t-sub { font-size: 11px; fill: var(--muted); }
+svg .t-head { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; fill: var(--muted); }
+svg .t-arrow { font-size: 11px; fill: var(--muted); font-style: italic; }
+svg .t-warn { font-size: 11px; font-weight: 600; fill: var(--warn); }
+svg .box { fill: var(--raise); stroke: var(--line); stroke-width: 1.2; }
+svg .box-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+svg .box-warm { fill: var(--warm-soft); stroke: var(--warm); stroke-width: 1.6; }
+svg .box-cool { fill: var(--cool-soft); stroke: var(--cool); stroke-width: 1.6; }
+svg .box-dim { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 4 3; }
+svg .box-wrap { fill: none; stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 2 3; }
+svg .chip { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+svg .chip-warn { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1; }
+svg .t-chip { font-size: 10.5px; fill: var(--fg); }
+svg .flow { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+svg .flow-accent { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+svg .flow-warm { stroke: var(--warm); stroke-width: 1.6; fill: none; }
+svg .flow-cool { stroke: var(--cool); stroke-width: 1.6; fill: none; }
+svg .flow-dash { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+svg .ah { fill: var(--muted); }
+svg .ah-accent { fill: var(--accent); }
+svg .ah-warm { fill: var(--warm); }
+svg .ah-cool { fill: var(--cool); }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <span class="eyebrow">LinkedInScraper · how the pieces fit · 6 Nov 2026</span>
+    <h1>LinkedIn Jobs Project Map</h1>
+    <p class="lede">Each month a job scrapes LinkedIn through Apify, cleans the results and stores them in Supabase Postgres, and SQL views turn them into market statistics. Module 12 then uses Claude to tag each posting with the skills it asks for. This map shows how the files connect. It doesn't go through the code line by line.</p>
+  </header>
+
+  <div class="status">
+    <div class="stat" style="--c:var(--accent)"><b>Monthly pipeline · running</b><span><code>run.py</code> on GitHub Actions, the 15th of each month. Scrape → transform → load → log.</span></div>
+    <div class="stat" style="--c:var(--cool)"><b>Database · 3 migrations</b><span><code>001_core</code>, <code>010_linkedin_jobs</code>, <code>020_analysis</code>. Two tables of data, one run log, seven views.</span></div>
+    <div class="stat" style="--c:var(--warm)"><b>Module 12 · Pass 1 written</b><span><code>core/skills.py</code> committed, <code>skill_discover.py</code> not committed yet. Pass 2 still to build.</span></div>
+  </div>
+
+  <nav class="tabs" aria-label="Pages">
+    <a href="#overview" data-k="overview"><span class="n">1</span>Whole project</a>
+    <a href="#pipeline" data-k="pipeline"><span class="n">2</span>Monthly pipeline</a>
+    <a href="#database" data-k="database"><span class="n">3</span>Database</a>
+    <a href="#llm" data-k="llm"><span class="n">4</span>LLM skills · Module 12</a>
+    <a href="#files" data-k="files"><span class="n">5</span>Automation &amp; files</a>
+    <a href="#sample" data-k="sample"><span class="n">6</span>Sample Run</a>
+  </nav>
+
+  <!-- ================= PAGE 1: OVERVIEW ================= -->
+  <div class="page" id="p-overview" data-page="overview">
+    <section>
+      <div class="intro">
+        <h2>Two jobs, one database</h2>
+        <p>The project has two flows that meet in Postgres. The <span class="k-main">monthly pipeline</span> puts postings into the database. The <span class="k-llm">LLM skills module</span> reads them back, asks Claude about each one and writes skills alongside them. <span class="k-ext">Blue</span> boxes are outside services and SQL views. Dashed boxes are not built yet.</p>
+      </div>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 1040 530" role="img" aria-label="config.yaml and themes.yaml feed run.py, which runs scrape.py against the Apify actor, then transform.py, then load.py into Supabase tables core.run_log, jobs.raw_postings and jobs.postings. Views postings_dedup and the analysis views sit on top. In Module 12, skill_discover.py samples postings_dedup and asks Claude to draft skills_draft.yaml, which you review into skills.yaml. skill_tag.py, not built yet, uses skills.yaml and Claude to fill jobs.skills and jobs.posting_skills, which feed the dashboard.">
+            <defs>
+              <marker id="o1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="o1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-accent" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="o1w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-warm" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="o1c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-cool" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text class="t-head" x="20" y="28">INPUTS &amp; SERVICES</text>
+            <text class="t-head" x="200" y="28">MONTHLY PIPELINE · run.py</text>
+            <text class="t-head" x="620" y="28">SUPABASE POSTGRES</text>
+            <text class="t-head" x="870" y="28">READ BY</text>
+
+            <!-- inputs -->
+            <rect class="box" x="20" y="62" width="140" height="44" rx="5"/>
+            <text class="t-mono" x="32" y="81">config.yaml</text>
+            <text class="t-sub" x="32" y="97">searches, limits, location</text>
+            <rect class="box" x="20" y="120" width="140" height="44" rx="5"/>
+            <text class="t-mono" x="32" y="139">themes.yaml</text>
+            <text class="t-sub" x="32" y="155">keyword themes</text>
+            <rect class="box-cool" x="20" y="192" width="140" height="48" rx="5"/>
+            <text class="t-name" x="32" y="212">Apify actor</text>
+            <text class="t-sub" x="32" y="229">LinkedIn jobs scraper</text>
+
+            <line class="flow" x1="160" y1="84" x2="198" y2="84" marker-end="url(#o1)"/>
+            <line class="flow" x1="160" y1="142" x2="198" y2="142" marker-end="url(#o1)"/>
+
+            <!-- pipeline wrapper -->
+            <rect class="box-wrap" x="200" y="44" width="380" height="176" rx="8"/>
+            <text class="t-mono" x="214" y="66">run.py</text>
+            <rect class="chip-warn" x="404" y="54" width="164" height="20" rx="10"/>
+            <text class="t-warn" x="486" y="68" text-anchor="middle">GitHub Actions · 15th</text>
+
+            <rect class="box-accent" x="214" y="96" width="104" height="66" rx="6"/>
+            <text class="t-mono" x="266" y="122" text-anchor="middle">scrape.py</text>
+            <text class="t-sub" x="266" y="140" text-anchor="middle">1 actor run</text>
+            <text class="t-sub" x="266" y="153" text-anchor="middle">per search</text>
+            <line class="flow-accent" x1="318" y1="129" x2="336" y2="129" marker-end="url(#o1a)"/>
+            <rect class="box-accent" x="340" y="96" width="104" height="66" rx="6"/>
+            <text class="t-mono" x="392" y="122" text-anchor="middle">transform.py</text>
+            <text class="t-sub" x="392" y="140" text-anchor="middle">merge, clean,</text>
+            <text class="t-sub" x="392" y="153" text-anchor="middle">hash, tag themes</text>
+            <line class="flow-accent" x1="444" y1="129" x2="462" y2="129" marker-end="url(#o1a)"/>
+            <rect class="box-accent" x="466" y="96" width="104" height="66" rx="6"/>
+            <text class="t-mono" x="518" y="122" text-anchor="middle">load.py</text>
+            <text class="t-sub" x="518" y="140" text-anchor="middle">raw copy +</text>
+            <text class="t-sub" x="518" y="153" text-anchor="middle">dedup upsert</text>
+
+            <path class="flow-cool" d="M160,216 L266,216 L266,166" marker-end="url(#o1c)" marker-start="url(#o1c)"/>
+            <text class="t-arrow" x="276" y="200">items + cost</text>
+            <text class="t-sub" x="392" y="198" text-anchor="middle">core/: settings · db · runlog · text</text>
+
+            <!-- database -->
+            <rect class="box" x="620" y="52" width="200" height="38" rx="5"/>
+            <text class="t-mono" x="632" y="76">core.run_log</text>
+            <rect class="box" x="620" y="102" width="200" height="38" rx="5"/>
+            <text class="t-mono" x="632" y="126">jobs.raw_postings</text>
+            <rect class="box-accent" x="620" y="152" width="200" height="38" rx="5"/>
+            <text class="t-mono" x="632" y="176">jobs.postings</text>
+
+            <path class="flow-accent" d="M570,129 C596,129 594,71 616,71" marker-end="url(#o1a)"/>
+            <line class="flow-accent" x1="570" y1="121" x2="616" y2="121" marker-end="url(#o1a)"/>
+            <path class="flow-accent" d="M570,137 C596,137 594,171 616,171" marker-end="url(#o1a)"/>
+
+            <line class="flow" x1="720" y1="190" x2="720" y2="216" marker-end="url(#o1)"/>
+            <rect class="box-cool" x="620" y="220" width="200" height="40" rx="5"/>
+            <text class="t-mono" x="632" y="238">jobs.postings_dedup</text>
+            <text class="t-sub" x="632" y="253">view · one row per role</text>
+            <line class="flow" x1="720" y1="260" x2="720" y2="280" marker-end="url(#o1)"/>
+            <rect class="box-cool" x="620" y="284" width="200" height="40" rx="5"/>
+            <text class="t-name" x="632" y="302">Analysis views</text>
+            <text class="t-sub" x="632" y="317">monthly, industry, themes, gap</text>
+
+            <!-- read by -->
+            <rect class="box" x="870" y="284" width="150" height="40" rx="5"/>
+            <text class="t-name" x="882" y="302">You</text>
+            <text class="t-sub" x="882" y="317">Supabase SQL Editor</text>
+            <line class="flow" x1="820" y1="304" x2="866" y2="304" marker-end="url(#o1)"/>
+            <rect class="box-dim" x="870" y="344" width="150" height="40" rx="5"/>
+            <text class="t-name" x="882" y="362">Dashboard</text>
+            <text class="t-sub" x="882" y="377">Module 11 · not built</text>
+
+            <!-- LLM module -->
+            <line class="flow-dash" x1="20" y1="352" x2="590" y2="352"/>
+            <text class="t-head" x="20" y="376">MODULE 12 · LLM SKILLS</text>
+
+            <rect class="box-cool" x="20" y="396" width="140" height="56" rx="5"/>
+            <text class="t-name" x="32" y="418">Anthropic API</text>
+            <text class="t-sub" x="32" y="436">claude-haiku-5-5</text>
+
+            <path class="flow-warm" d="M620,240 C440,240 300,300 270,392" marker-end="url(#o1w)"/>
+            <text class="t-arrow" x="420" y="270">random sample of 500</text>
+
+            <rect class="box-warm" x="200" y="396" width="140" height="56" rx="6"/>
+            <text class="t-mono" x="270" y="418" text-anchor="middle">skill_discover.py</text>
+            <text class="t-sub" x="270" y="436" text-anchor="middle">Pass 1 · written</text>
+            <line class="flow-warm" x1="164" y1="424" x2="196" y2="424" marker-end="url(#o1w)" marker-start="url(#o1w)"/>
+
+            <line class="flow-warm" x1="340" y1="424" x2="356" y2="424" marker-end="url(#o1w)"/>
+            <rect class="box" x="360" y="396" width="120" height="56" rx="5"/>
+            <text class="t-mono" x="420" y="418" text-anchor="middle">skills_draft</text>
+            <text class="t-sub" x="420" y="436" text-anchor="middle">.yaml</text>
+            <line class="flow-warm" x1="480" y1="424" x2="496" y2="424" marker-end="url(#o1w)"/>
+            <text class="t-arrow" x="488" y="390" text-anchor="middle">you review</text>
+            <rect class="box-dim" x="500" y="396" width="100" height="56" rx="5"/>
+            <text class="t-mono" x="550" y="418" text-anchor="middle">skills.yaml</text>
+            <text class="t-sub" x="550" y="436" text-anchor="middle">not saved yet</text>
+
+            <line class="flow-warm" x1="550" y1="452" x2="550" y2="472" marker-end="url(#o1w)"/>
+            <rect class="box-dim" x="420" y="476" width="160" height="44" rx="6"/>
+            <text class="t-mono" x="500" y="495" text-anchor="middle">skill_tag.py</text>
+            <text class="t-sub" x="500" y="511" text-anchor="middle">Pass 2 · to build</text>
+            <path class="flow-warm" d="M420,498 L90,498 L90,456" marker-end="url(#o1w)"/>
+            <text class="t-arrow" x="250" y="490" text-anchor="middle">1 request per posting</text>
+
+            <line class="flow-warm" x1="580" y1="498" x2="616" y2="498" marker-end="url(#o1w)"/>
+            <rect class="box-dim" x="620" y="472" width="200" height="52" rx="5"/>
+            <text class="t-mono" x="632" y="493">jobs.skills</text>
+            <text class="t-mono" x="632" y="511">jobs.posting_skills</text>
+            <path class="flow-dash" d="M820,498 C850,498 846,364 866,364" marker-end="url(#o1)"/>
+          </svg>
+        </div>
+        <figcaption>The <code>core/</code> package holds the shared tools: reading secrets (<code>settings</code>), connecting and migrating (<code>db</code>), the run log (<code>runlog</code>), hashing and theme tagging (<code>text</code>), and the LLM tools (<code>skills</code>). <code>projects/linkedin_jobs/</code> holds the scripts that use those tools. Postings reach Module 12 only through the database. The LLM scripts never call <code>run.py</code>.</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>Tools vs. scripts</h2>
+        <p>The same split runs through the whole repo. A file in <code>core/</code> defines things and doesn't run anything by itself. A file in <code>projects/linkedin_jobs/</code> is one you run with <code>uv run python -m …</code>. It imports the tools and does the work.</p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Tool in core/</th><th>What it gives you</th><th>Used by</th></tr></thead>
+          <tbody>
+            <tr><td><code>settings.py</code></td><td>Loads <code>.env</code> and gets secrets: <code>APIFY_TOKEN</code>, <code>SUPABASE_DB_URL</code>, <code>ANTHROPIC_API_KEY</code></td><td>db, scrape, skills, check_connections</td></tr>
+            <tr><td><code>db.py</code></td><td><code>connect()</code>, <code>migrate()</code> (runs every <code>sql/*.sql</code> in name order), <code>ping()</code></td><td>run.py, skill_discover.py, two workflows</td></tr>
+            <tr><td><code>runlog.py</code></td><td><code>start_run</code> / <code>finish_run</code>: one row per run in <code>core.run_log</code></td><td>run.py</td></tr>
+            <tr><td><code>text.py</code></td><td><code>normalize</code>, <code>content_hash</code>, <code>ThemeTagger</code> (whole-word regex per theme)</td><td>transform.py, load.py</td></tr>
+            <tr><td><code>skills.py</code></td><td><code>Claude</code> (one request, cost tracking), <code>extract_open</code>, <code>build_list</code>, <code>SkillTagger</code></td><td>skill_discover.py, skill_tag.py (to build)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 2: MONTHLY PIPELINE ================= -->
+  <div class="page" id="p-pipeline" data-page="pipeline" hidden>
+    <section>
+      <div class="intro">
+        <h2>One run of <code>run.py</code>, in order</h2>
+        <p>Started by GitHub Actions on the 15th, or by you with <code>uv run python -m projects.linkedin_jobs.run --limit 25</code>. All the database work happens on one connection, opened once.</p>
+      </div>
+      <ol class="road main">
+        <li><span class="num">01</span><div class="body">
+          <span class="what">Start up and read settings</span>
+          <span class="detail"><code>core/settings.py</code> loads <code>.env</code> on your machine. On GitHub the same names come from repository secrets. <code>parse_args</code> reads <code>--limit</code> and <code>--searches</code>, which override <code>config.yaml</code>. A <code>ThemeTagger</code> is built from <code>themes.yaml</code>.</span>
+          <div class="tables"><span class="tbl file">config.yaml</span><span class="tbl file">themes.yaml</span><span class="tbl file">.env</span></div>
+        </div></li>
+        <li><span class="num dim">↳</span><div class="body">
+          <span class="what">Shortcut: <code>--retag</code> or <code>--rehash</code></span>
+          <span class="detail">These re-apply <code>themes.yaml</code> or recompute <code>job_hash</code> on every stored posting, then exit. Nothing is scraped. Use them after you edit themes or change the hash.</span>
+        </div></li>
+        <li><span class="num">02</span><div class="body">
+          <span class="what">Open a run in the log</span>
+          <span class="detail"><code>runlog.start_run</code> inserts a row with status <code>running</code> and the parameters, commits it right away, and returns a <code>run_id</code>. If the job crashes later, this row still shows that the run happened.</span>
+          <div class="tables"><span class="tbl db">core.run_log</span></div>
+        </div></li>
+        <li><span class="num">03</span><div class="body">
+          <span class="what">Scrape each search term</span>
+          <span class="detail"><code>scrape.run_search</code> converts the config into the actor's input, starts the Apify actor, waits for it to finish, then reads its dataset. It returns the items and the cost in USD. If one term fails, the error is recorded and the other terms still run.</span>
+          <div class="tables"><span class="tbl">Apify · curious_coder/linkedin-jobs-scraper</span></div>
+        </div></li>
+        <li><span class="num">04</span><div class="body">
+          <span class="what">Transform: merge, then one clean row per job</span>
+          <span class="detail"><code>merge_items</code> keeps each job ID once, even if two searches found it, and remembers which terms found it. It also removes personal data about the poster. <code>to_row</code> maps fields, parses salary text into min, max and period, computes <code>content_hash</code> and <code>job_hash</code>, and tags themes.</span>
+        </div></li>
+        <li><span class="num">05</span><div class="body">
+          <span class="what">Load: raw copy, then dedup upsert, in one transaction</span>
+          <span class="detail"><code>insert_raw</code> saves the scraper's output as JSON, one row per job per run, so the clean table can be rebuilt without scraping again. <code>upsert_postings</code> loads the rows into a temporary <code>stage</code> table, then runs <code>insert … on conflict (job_id) do update</code>. A new job gets a new row. For a known job it refreshes the fields, merges the search terms and increases <code>last_seen_at</code> and <code>times_seen</code>. <code>xmax = 0</code> tells new rows from updated ones.</span>
+          <div class="tables"><span class="tbl db">jobs.raw_postings</span><span class="tbl db">jobs.postings</span></div>
+        </div></li>
+        <li><span class="num">06</span><div class="body">
+          <span class="what">Close the run</span>
+          <span class="detail"><code>finish_run</code> records the status (<code>succeeded</code>, <code>succeeded_with_errors</code> or <code>failed</code>), the row counts, the cost and any errors. It rolls back first, so a failed transaction can't stop the log from being written. The exit code is 1 only if the run failed, which turns the GitHub run red.</span>
+          <div class="tables"><span class="tbl db">core.run_log</span></div>
+        </div></li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>Three ways to say "the same job"</h2>
+        <p>LinkedIn reposts roles under new IDs and gives a multi-city role one ID per city. Each row stores three identities so the views can collapse these duplicates without deleting anything.</p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Key</th><th>Built from</th><th>Groups together</th></tr></thead>
+          <tbody>
+            <tr><td><code>job_id</code></td><td>LinkedIn's ID</td><td>The same posting seen in several monthly runs. This is the primary key of <code>jobs.postings</code>.</td></tr>
+            <tr><td><code>content_hash</code></td><td>company + title + location + description</td><td>A repost: the same role in the same place under a new ID</td></tr>
+            <tr><td><code>job_hash</code></td><td>company + title + description</td><td>A repost or a multi-city role. <code>postings_dedup</code> groups on this one.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 3: DATABASE ================= -->
+  <div class="page" id="p-database" data-page="database" hidden>
+    <section>
+      <div class="intro">
+        <h2>Tables and the views built on them</h2>
+        <p><code>uv run python -m core.db</code> runs every file in <code>sql/</code> in name order. Each file is safe to run again. Tables use <code>if not exists</code>. Views are dropped and recreated, because <code>select p.*</code> is fixed when a view is created.</p>
+      </div>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 1040 400" role="img" aria-label="jobs.raw_postings and jobs.postings reference core.run_log by run_id. jobs.postings feeds the view postings_dedup, which feeds posting_themes, monthly_summary, industry_mix and theme_coverage. theme_coverage and the my_skills table feed skill_gap. Planned for Module 12: jobs.skills and jobs.posting_skills feed role_skills.">
+            <defs>
+              <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="d1c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-cool" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text class="t-head" x="20" y="24">TABLES</text>
+            <text class="t-head" x="290" y="24">CORE VIEW · 010</text>
+            <text class="t-head" x="570" y="24">VIEWS · 010 + 020</text>
+            <text class="t-head" x="830" y="24">THE ANSWER</text>
+
+            <rect class="box" x="20" y="40" width="190" height="44" rx="5"/>
+            <text class="t-mono" x="32" y="59">core.run_log</text>
+            <text class="t-sub" x="32" y="75">001 · one row per run</text>
+            <rect class="box" x="20" y="110" width="190" height="44" rx="5"/>
+            <text class="t-mono" x="32" y="129">jobs.raw_postings</text>
+            <text class="t-sub" x="32" y="145">010 · JSON, per job per run</text>
+            <line class="flow-dash" x1="115" y1="110" x2="115" y2="88" marker-end="url(#d1)"/>
+            <text class="t-arrow" x="122" y="102">run_id</text>
+
+            <rect class="box-accent" x="20" y="200" width="190" height="50" rx="5"/>
+            <text class="t-mono" x="32" y="221">jobs.postings</text>
+            <text class="t-sub" x="32" y="238">010 · one row per job ID</text>
+            <path class="flow-dash" d="M210,214 C250,214 250,62 214,62" marker-end="url(#d1)"/>
+            <text class="t-arrow" x="250" y="140">first/last_run_id</text>
+
+            <rect class="box" x="20" y="290" width="190" height="40" rx="5"/>
+            <text class="t-mono" x="32" y="308">jobs.my_skills</text>
+            <text class="t-sub" x="32" y="322">020 · your 0–5 rating per theme</text>
+
+            <line class="flow-cool" x1="210" y1="225" x2="286" y2="225" marker-end="url(#d1c)"/>
+            <rect class="box-cool" x="290" y="200" width="200" height="50" rx="5"/>
+            <text class="t-mono" x="302" y="221">jobs.postings_dedup</text>
+            <text class="t-sub" x="302" y="238">one row per role (job_hash)</text>
+
+            <path class="flow-cool" d="M490,225 C530,225 530,60 566,60" marker-end="url(#d1c)"/>
+            <path class="flow-cool" d="M490,225 C530,225 530,120 566,120" marker-end="url(#d1c)"/>
+            <path class="flow-cool" d="M490,225 C530,225 530,180 566,180" marker-end="url(#d1c)"/>
+            <path class="flow-cool" d="M490,225 C530,225 530,240 566,240" marker-end="url(#d1c)"/>
+
+            <rect class="box-cool" x="570" y="40" width="200" height="40" rx="5"/>
+            <text class="t-mono" x="582" y="58">posting_themes</text>
+            <text class="t-sub" x="582" y="72">posting × theme, for BI</text>
+            <rect class="box-cool" x="570" y="100" width="200" height="40" rx="5"/>
+            <text class="t-mono" x="582" y="118">monthly_summary</text>
+            <text class="t-sub" x="582" y="132">new roles per month</text>
+            <rect class="box-cool" x="570" y="160" width="200" height="40" rx="5"/>
+            <text class="t-mono" x="582" y="178">industry_mix</text>
+            <text class="t-sub" x="582" y="192">last 90 days</text>
+            <rect class="box-cool" x="570" y="220" width="200" height="40" rx="5"/>
+            <text class="t-mono" x="582" y="238">theme_coverage</text>
+            <text class="t-sub" x="582" y="252">share of roles per theme</text>
+
+            <line class="flow-cool" x1="770" y1="240" x2="826" y2="240" marker-end="url(#d1c)"/>
+            <path class="flow" d="M210,310 L925,310 L925,264" marker-end="url(#d1)"/>
+            <rect class="box-accent" x="830" y="220" width="190" height="40" rx="5"/>
+            <text class="t-mono" x="842" y="238">skill_gap</text>
+            <text class="t-sub" x="842" y="252">market share × (5 − your level)</text>
+
+            <rect class="box-dim" x="290" y="330" width="200" height="50" rx="5"/>
+            <text class="t-mono" x="302" y="350">jobs.skills</text>
+            <text class="t-mono" x="302" y="368">jobs.posting_skills</text>
+            <line class="flow-dash" x1="490" y1="355" x2="566" y2="355" marker-end="url(#d1)"/>
+            <path class="flow-dash" d="M390,250 L390,276 C390,300 540,300 560,338 L566,345" marker-end="url(#d1)"/>
+            <rect class="box-dim" x="570" y="335" width="200" height="40" rx="5"/>
+            <text class="t-mono" x="582" y="353">role_skills</text>
+            <text class="t-sub" x="582" y="367">040 · to build (Module 12)</text>
+          </svg>
+        </div>
+        <figcaption><code>010</code> runs <code>drop view jobs.postings_dedup cascade</code> on every migration. Because of <code>cascade</code>, every view built on it is dropped too, so later files must recreate theirs. That's why <code>040_skills.sql</code> recreates <code>role_skills</code> each time. It's also why the guide adds the new <code>other_skills</code> column in <code>010</code> rather than in <code>040</code>.</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>Migration files</h2>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>File</th><th>Creates</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><code>001_core.sql</code></td><td><code>core</code> schema, <code>core.run_log</code></td><td><span class="pill ok">applied</span></td></tr>
+            <tr><td><code>010_linkedin_jobs.sql</code></td><td><code>jobs</code> schema, <code>raw_postings</code>, <code>postings</code>, indexes, <code>postings_dedup</code>, <code>posting_themes</code></td><td><span class="pill ok">applied</span></td></tr>
+            <tr><td><code>020_analysis.sql</code></td><td><code>my_skills</code>, <code>monthly_summary</code>, <code>industry_mix</code>, <code>theme_coverage</code>, <code>skill_gap</code></td><td><span class="pill ok">applied</span></td></tr>
+            <tr><td><code>040_skills.sql</code></td><td><code>jobs.skills</code>, <code>jobs.posting_skills</code>, <code>role_skills</code> view, plus <code>other_skills</code> column added in 010</td><td><span class="pill info">guide 12.3 · to build</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 4: LLM MODULE ================= -->
+  <div class="page" id="p-llm" data-page="llm" hidden>
+    <section>
+      <div class="intro">
+        <h2>Two passes: build a list, then tag against it</h2>
+        <p>Claude reads one posting at a time, and SQL does the counting. If Claude named skills freely in every posting, the same skill would get several names, and those can't be counted together. So <span class="k-llm">Pass 1</span> names skills freely in a sample and merges the names into one list. <span class="k-llm">Pass 2</span> tags every posting, allowing only names from that list. All three kinds of request go through one <code>Claude</code> object, which sets the model and the JSON schema and keeps a running cost.</p>
+      </div>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 1040 450" role="img" aria-label="Pass 1: a random sample of 500 postings from postings_dedup goes to extract_open, one request each. A Counter counts phrases, build_list merges the top 400 into a draft list in skills_draft.yaml, which you review. Both functions call Claude.ask. Pass 2: skills.yaml and untagged postings feed SkillTagger.tag, which also calls Claude.ask, and writes jobs.posting_skills and postings.other_skills. sync_skills copies skills.yaml into jobs.skills. These feed role_skills and emerging skills, then statistics and the dashboard.">
+            <defs>
+              <marker id="l1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="l1w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-warm" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="l1c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-cool" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text class="t-head" x="20" y="28">PASS 1 · DISCOVER · skill_discover.py · written</text>
+
+            <rect class="box-cool" x="20" y="48" width="150" height="60" rx="5"/>
+            <text class="t-mono" x="32" y="70">postings_dedup</text>
+            <text class="t-sub" x="32" y="88">random 500, with text</text>
+            <line class="flow-warm" x1="170" y1="78" x2="206" y2="78" marker-end="url(#l1w)"/>
+
+            <rect class="box-warm" x="210" y="48" width="150" height="60" rx="6"/>
+            <text class="t-mono" x="285" y="70" text-anchor="middle">extract_open</text>
+            <text class="t-sub" x="285" y="86" text-anchor="middle">1 request per posting</text>
+            <text class="t-sub" x="285" y="100" text-anchor="middle">OPEN_SCHEMA</text>
+            <line class="flow-warm" x1="360" y1="78" x2="396" y2="78" marker-end="url(#l1w)"/>
+            <text class="t-arrow" x="378" y="70" text-anchor="middle">phrases</text>
+
+            <rect class="box" x="400" y="48" width="140" height="60" rx="5"/>
+            <text class="t-mono" x="470" y="70" text-anchor="middle">Counter</text>
+            <text class="t-sub" x="470" y="86" text-anchor="middle">once per posting</text>
+            <text class="t-sub" x="470" y="100" text-anchor="middle">plain Python</text>
+            <line class="flow-warm" x1="540" y1="78" x2="576" y2="78" marker-end="url(#l1w)"/>
+            <text class="t-arrow" x="558" y="70" text-anchor="middle">top 400</text>
+
+            <rect class="box-warm" x="580" y="48" width="150" height="60" rx="6"/>
+            <text class="t-mono" x="655" y="70" text-anchor="middle">build_list</text>
+            <text class="t-sub" x="655" y="86" text-anchor="middle">1 request, 40–60 skills</text>
+            <text class="t-sub" x="655" y="100" text-anchor="middle">LIST_SCHEMA</text>
+            <line class="flow-warm" x1="730" y1="78" x2="766" y2="78" marker-end="url(#l1w)"/>
+
+            <rect class="box" x="770" y="48" width="120" height="60" rx="5"/>
+            <text class="t-mono" x="830" y="72" text-anchor="middle">skills_draft</text>
+            <text class="t-sub" x="830" y="90" text-anchor="middle">.yaml</text>
+            <line class="flow-warm" x1="890" y1="78" x2="906" y2="78" marker-end="url(#l1w)"/>
+            <rect class="box-dim" x="910" y="48" width="110" height="60" rx="5"/>
+            <text class="t-name" x="965" y="72" text-anchor="middle">You review</text>
+            <text class="t-sub" x="965" y="90" text-anchor="middle">merge · define</text>
+
+            <!-- shared Claude -->
+            <rect class="box-cool" x="210" y="152" width="520" height="48" rx="6"/>
+            <text class="t-mono" x="226" y="172">Claude.ask</text>
+            <text class="t-sub" x="226" y="190">model, effort, thinking off, JSON schema → dict · adds up tokens → cost_usd</text>
+            <line class="flow-dash" x1="285" y1="108" x2="285" y2="148" marker-end="url(#l1)"/>
+            <line class="flow-dash" x1="655" y1="108" x2="655" y2="148" marker-end="url(#l1)"/>
+            <line class="flow-dash" x1="730" y1="176" x2="776" y2="176" marker-end="url(#l1)"/>
+            <rect class="box-cool" x="780" y="152" width="150" height="48" rx="5"/>
+            <text class="t-name" x="792" y="172">Anthropic API</text>
+            <text class="t-sub" x="792" y="190">claude-haiku-5-5</text>
+
+            <path class="flow-warm" d="M965,108 L965,228 L85,228 L85,262" marker-end="url(#l1w)"/>
+            <text class="t-arrow" x="600" y="222">save as skills.yaml</text>
+
+            <text class="t-head" x="20" y="252">PASS 2 · TAG · skill_tag.py · to build</text>
+
+            <rect class="box-dim" x="20" y="266" width="130" height="48" rx="5"/>
+            <text class="t-mono" x="32" y="286">skills.yaml</text>
+            <text class="t-sub" x="32" y="302">fixed list</text>
+            <rect class="box" x="20" y="330" width="130" height="48" rx="5"/>
+            <text class="t-mono" x="32" y="350">jobs.postings</text>
+            <text class="t-sub" x="32" y="366">other_skills is null</text>
+            <line class="flow-warm" x1="150" y1="290" x2="206" y2="300" marker-end="url(#l1w)"/>
+            <line class="flow-warm" x1="150" y1="354" x2="206" y2="334" marker-end="url(#l1w)"/>
+
+            <rect class="box-warm" x="210" y="276" width="170" height="74" rx="6"/>
+            <text class="t-mono" x="295" y="302" text-anchor="middle">SkillTagger.tag</text>
+            <text class="t-sub" x="295" y="320" text-anchor="middle">1 request per posting</text>
+            <text class="t-sub" x="295" y="336" text-anchor="middle">closed enum of names</text>
+            <line class="flow-dash" x1="295" y1="276" x2="295" y2="204" marker-end="url(#l1)"/>
+
+            <path class="flow-warm" d="M20,290 L8,290 L8,420 L436,420" marker-end="url(#l1w)"/>
+            <text class="t-arrow" x="300" y="414" text-anchor="middle">sync_skills (each run)</text>
+
+            <line class="flow-warm" x1="380" y1="300" x2="436" y2="290" marker-end="url(#l1w)"/>
+            <text class="t-arrow" x="408" y="284" text-anchor="middle">on list</text>
+            <line class="flow-warm" x1="380" y1="330" x2="436" y2="350" marker-end="url(#l1w)"/>
+            <text class="t-arrow" x="408" y="356" text-anchor="middle">new</text>
+
+            <rect class="box-dim" x="440" y="270" width="180" height="40" rx="5"/>
+            <text class="t-mono" x="452" y="288">jobs.posting_skills</text>
+            <text class="t-sub" x="452" y="302">job × skill × level</text>
+            <rect class="box-dim" x="440" y="330" width="180" height="40" rx="5"/>
+            <text class="t-mono" x="452" y="348">postings.other_skills</text>
+            <text class="t-sub" x="452" y="362">NULL = not tagged yet</text>
+            <rect class="box-dim" x="440" y="400" width="180" height="40" rx="5"/>
+            <text class="t-mono" x="452" y="418">jobs.skills</text>
+            <text class="t-sub" x="452" y="432">category stored once</text>
+
+            <line class="flow-dash" x1="620" y1="290" x2="676" y2="290" marker-end="url(#l1)"/>
+            <path class="flow-dash" d="M620,420 C652,420 650,300 676,300" marker-end="url(#l1)"/>
+            <rect class="box-dim" x="680" y="270" width="160" height="40" rx="5"/>
+            <text class="t-mono" x="692" y="288">role_skills</text>
+            <text class="t-sub" x="692" y="302">view, reposts collapsed</text>
+            <line class="flow-dash" x1="620" y1="350" x2="676" y2="350" marker-end="url(#l1)"/>
+            <rect class="box-dim" x="680" y="330" width="160" height="40" rx="5"/>
+            <text class="t-name" x="692" y="348">Emerging skills</text>
+            <text class="t-sub" x="692" y="362">not on your list yet</text>
+
+            <line class="flow-dash" x1="840" y1="290" x2="876" y2="290" marker-end="url(#l1)"/>
+            <line class="flow-dash" x1="840" y1="350" x2="876" y2="350" marker-end="url(#l1)"/>
+            <rect class="box-dim" x="880" y="270" width="140" height="100" rx="5"/>
+            <text class="t-name" x="892" y="296">Statistics</text>
+            <text class="t-sub" x="892" y="314">12.7 · SQL shares</text>
+            <text class="t-name" x="892" y="342">Dashboard</text>
+            <text class="t-sub" x="892" y="360">12.8 · needs Mod 11</text>
+          </svg>
+        </div>
+        <figcaption>Everything in the orange boxes is already in <code>core/skills.py</code>. What's missing is the Pass 2 script, the <code>040</code> tables and your reviewed <code>skills.yaml</code>. After Pass 2, the emerging-skills list closes the loop: add the real new skills to <code>skills.yaml</code>, then re-tag (guide 12.10).</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>Pass 1: <code>skill_discover.py</code>, in order</h2>
+        <p>Run it with <code>uv run python -m projects.linkedin_jobs.skill_discover --sample 20</code> first (a few cents), then without <code>--sample</code> for the full 500 (about $0.15).</p>
+      </div>
+      <ol class="road llm">
+        <li><span class="num">01</span><div class="body">
+          <span class="what">Sample postings</span>
+          <span class="detail">Picks random rows from <code>jobs.postings_dedup</code> (one row per role, so reposts don't skew the sample) that have a description.</span>
+          <div class="tables"><span class="tbl db">jobs.postings_dedup</span></div>
+        </div></li>
+        <li><span class="num">02</span><div class="body">
+          <span class="what"><code>extract_open</code> on each posting</span>
+          <span class="detail">Sends the title and description, cut at 8,000 characters, with an open schema. Any skill name is allowed, but the category must be one of four. If a request fails, that posting is skipped and the loop goes on.</span>
+        </div></li>
+        <li><span class="num">03</span><div class="body">
+          <span class="what">Count phrases with <code>Counter</code></span>
+          <span class="detail">The key is <code>(lowercased phrase, category)</code>. Phrases go into a <em>set</em> before counting, so a wordy posting counts each phrase once.</span>
+        </div></li>
+        <li><span class="num">04</span><div class="body">
+          <span class="what"><code>build_list</code>: one bigger request</span>
+          <span class="detail">Sends the 400 most common phrases with their counts, at <code>effort="medium"</code>. Claude merges synonyms into 40 to 60 skills, each with a name, a category and a one-sentence definition.</span>
+        </div></li>
+        <li><span class="num">05</span><div class="body">
+          <span class="what">Write the draft, then you edit it</span>
+          <span class="detail">Writes <code>skills_draft.yaml</code>, sorted by category. You merge, split and sharpen it by hand, then save it as <code>skills.yaml</code>. The definitions matter: Pass 2 puts them in its prompt to decide what counts as each skill.</span>
+          <div class="tables"><span class="tbl file">skills_draft.yaml</span><span class="tbl todo">skills.yaml</span></div>
+        </div></li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>Pass 2: <code>skill_tag.py</code>, what it will do</h2>
+        <p>Guide section 12.6. You'll run it on every posting once, then monthly on new postings only.</p>
+      </div>
+      <ol class="road llm">
+        <li><span class="num dim">01</span><div class="body">
+          <span class="what">Load <code>skills.yaml</code> into <code>SkillTagger</code></span>
+          <span class="detail">The constructor builds the system prompt (skills grouped by category, with definitions) and a <em>closed</em> schema in which <code>skill</code> must be one of your names.</span>
+        </div></li>
+        <li><span class="num dim">02</span><div class="body">
+          <span class="what"><code>sync_skills</code>: make <code>jobs.skills</code> match the YAML</span>
+          <span class="detail">Adds new skills, updates categories and definitions, and deletes skills you removed. Changing a category only touches this table, so no posting needs re-tagging.</span>
+          <div class="tables"><span class="tbl todo">jobs.skills</span></div>
+        </div></li>
+        <li><span class="num dim">03</span><div class="body">
+          <span class="what">Pick untagged postings</span>
+          <span class="detail">Postings with <code>other_skills is null</code>, newest first. <code>--retag TEXT</code> and <code>--retag-all</code> set this column back to null so those postings get tagged again.</span>
+        </div></li>
+        <li><span class="num dim">04</span><div class="body">
+          <span class="what">Tag each posting and write it</span>
+          <span class="detail"><code>tag()</code> returns <code>{skill: level}</code> plus up to 5 new phrases. For each posting the script deletes its old skill rows, inserts the new ones and stores <code>other_skills</code>, even when it's empty (<code>{}</code>). It commits every 50 postings and stops after 5 failures in a row.</span>
+          <div class="tables"><span class="tbl todo">jobs.posting_skills</span><span class="tbl todo">jobs.postings.other_skills</span></div>
+        </div></li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>Two things fixed before Pass 2</h2>
+        <p>Your <code>SkillTagger</code> differs from the guide in two places. Pass 1 doesn't use <code>SkillTagger</code>, so neither one breaks <code>skill_discover.py</code>. Both would have failed the first time <code>skill_tag.py</code> ran. Both are now fixed to match the guide.</p>
+      </div>
+      <div class="finding ok">
+        <div class="head"><span class="pill ok">fixed</span><b><code>self.names</code> was a set</b></div>
+        <p><code>core/skills.py:288</code> builds <code>{s["skill"] for s in skills}</code>, and the schema uses it as <code>"enum": self.names</code>. A set can't be converted to JSON, so the first request would have raised <code>TypeError</code>. It's now a list: <code>[s["skill"] for s in skills]</code>.</p>
+      </div>
+      <div class="finding ok">
+        <div class="head"><span class="pill ok">fixed</span><b><code>claude</code> was required in <code>SkillTagger.__init__</code></b></div>
+        <p>The guide's signature is <code>claude: Claude | None = None</code> with <code>self.claude = claude or Claude()</code>. <code>skill_tag.py</code> calls <code>SkillTagger.from_yaml(path)</code> without passing a <code>Claude</code>. It now defaults the same way.</p>
+      </div>
+      <div class="finding">
+        <div class="head"><span class="pill info">minor</span><b><code>ANTHROPIC_API_KEY</code> isn't in <code>settings.REQUIRED</code></b></div>
+        <p><code>settings.get</code> still raises a clear error if the key is missing. The only effect is that <code>python -m core.settings</code> won't report on it.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 5: AUTOMATION & FILES ================= -->
+  <div class="page" id="p-files" data-page="files" hidden>
+    <section>
+      <div class="intro">
+        <h2>GitHub Actions</h2>
+        <p>Every workflow does the same setup: check out the repo, install <code>uv</code>, run <code>uv sync --locked</code>. Secrets reach the code as environment variables, and <code>core/settings.py</code> reads them just as it reads <code>.env</code> locally.</p>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <div class="ttl"><h3>LinkedIn jobs (monthly)</h3><span class="prog">linkedin-jobs.yml</span></div>
+          <p>Runs the scrape-and-load pipeline. The manual button accepts optional <code>limit</code> and <code>searches</code>.</p>
+          <dl class="facts"><dt>When</dt><dd>15th, 11:17 UTC · manual</dd><dt>Runs</dt><dd><code>projects.linkedin_jobs.run</code></dd><dt>Secrets</dt><dd>APIFY_TOKEN, SUPABASE_DB_URL</dd></dl>
+        </div>
+        <div class="card">
+          <div class="ttl"><h3>Set up database</h3><span class="prog">setup-database.yml</span></div>
+          <p>Applies every <code>sql/*.sql</code> file. Runs whenever a <code>.sql</code> file changes on main, so <code>040_skills.sql</code> will apply itself when you push it.</p>
+          <dl class="facts"><dt>When</dt><dd>push to <code>sql/**</code> · manual</dd><dt>Runs</dt><dd><code>core.db</code></dd><dt>Secrets</dt><dd>SUPABASE_DB_URL</dd></dl>
+        </div>
+        <div class="card">
+          <div class="ttl"><h3>Keep database awake</h3><span class="prog">keep-alive.yml</span></div>
+          <p>Supabase pauses free projects after a week without activity. Once a week this runs one tiny query.</p>
+          <dl class="facts"><dt>When</dt><dd>Mondays 13:43 UTC</dd><dt>Runs</dt><dd><code>core.db ping</code></dd><dt>Secrets</dt><dd>SUPABASE_DB_URL</dd></dl>
+        </div>
+        <div class="card">
+          <div class="ttl"><h3>Tests</h3><span class="prog">tests.yml</span></div>
+          <p>Starts a throwaway Postgres 16 container and runs <code>pytest</code>. The Apify scraper is replaced with fixture data, so tests cost nothing.</p>
+          <dl class="facts"><dt>When</dt><dd>every push and PR</dd><dt>Runs</dt><dd><code>pytest -v</code></dd><dt>Secrets</dt><dd>none (TEST_DB_URL is local)</dd></dl>
+        </div>
+      </div>
+      <p class="note">Module 12 adds an Anthropic step after the monthly scrape, so the workflow will also need an <code>ANTHROPIC_API_KEY</code> secret (guide 12.9).</p>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>Every file, and its job</h2>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>File</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td class="grp" colspan="2">projects/linkedin_jobs/ · scripts and their config</td></tr>
+            <tr><td><code>run.py</code></td><td>Entry point for the monthly pipeline. Runs the other files in order and owns the run log.</td></tr>
+            <tr><td><code>scrape.py</code></td><td>Talks to Apify: builds the actor input, runs the actor, returns items and cost.</td></tr>
+            <tr><td><code>transform.py</code></td><td>Pure functions, no I/O: merge searches, remove personal data, parse salary, build clean rows.</td></tr>
+            <tr><td><code>load.py</code></td><td>All the SQL writes for postings: raw insert, staged upsert, <code>retag_all</code>, <code>rehash_all</code>.</td></tr>
+            <tr><td><code>config.yaml</code> · <code>themes.yaml</code></td><td>What to search, and the keyword themes. You can change either without touching code.</td></tr>
+            <tr><td><code>skill_discover.py</code></td><td>Module 12, Pass 1. Not committed yet.</td></tr>
+            <tr><td><code>skill_tag.py</code> · <code>skills.yaml</code></td><td>Module 12, Pass 2, and its reviewed list. Not created yet.</td></tr>
+            <tr><td><code>explore.py</code></td><td>One-off: scrapes 5 jobs into <code>samples/raw_sample.json</code> so you can see the raw fields.</td></tr>
+            <tr><td class="grp" colspan="2">core/ · shared tools</td></tr>
+            <tr><td><code>settings.py</code> · <code>db.py</code> · <code>runlog.py</code></td><td>Secrets, connection and migrations, run log</td></tr>
+            <tr><td><code>text.py</code> · <code>skills.py</code></td><td>Hashing and keyword themes · LLM skill tools</td></tr>
+            <tr><td><code>check_connections.py</code></td><td>One-off: checks that the Apify and Supabase credentials work.</td></tr>
+            <tr><td class="grp" colspan="2">elsewhere</td></tr>
+            <tr><td><code>sql/</code></td><td>Database schema, applied in name order by <code>core.db</code></td></tr>
+            <tr><td><code>tests/</code></td><td>Salary parsing, privacy, hashes, cross-search merge, monthly dedup, and an end-to-end run against a fake Apify</td></tr>
+            <tr><td><code>demo.py</code> · <code>samples/</code></td><td>Scratch scripts that run <code>transform</code> on the saved sample</td></tr>
+            <tr><td><code>pyproject.toml</code> · <code>uv.lock</code></td><td>Dependencies: anthropic, apify-client, psycopg, python-dotenv, pyyaml; pytest for dev</td></tr>
+            <tr><td><code>guides/</code></td><td>The course guides and these maps</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= PAGE 6: SAMPLE RUN ================= -->
+  <div class="page" id="p-sample" data-page="sample" hidden>
+    <section>
+      <div class="intro">
+        <h2>From an empty database through two months</h2>
+        <p>This page follows three postings, then a fourth, through every script in the order you'd run them, and shows what each table holds after each stage. Most columns are left out so each table fits.</p>
+      </div>
+      <div class="sr-key">
+        <span><i style="background:var(--ok-soft);border:1px solid var(--ok)"></i>row added in this stage</span>
+        <span><i style="background:var(--warn-soft);border:1px solid var(--warn)"></i>row changed in this stage</span>
+        <span><i style="border:1px solid var(--line)"></i>unchanged</span>
+      </div>
+
+      <ol class="road main">
+        <li><span class="num">00</span><div class="body">
+          <span class="what">Setup · <code>uv run python -m core.db</code></span>
+          <span class="detail">The migrations create every table, all of them empty. The <code>alter table</code> line in <code>010</code> adds the <code>other_skills</code> column to <code>jobs.postings</code>.</span>
+          <div class="sr-tables">
+            <div class="sr-t"><span class="cap">core.run_log</span><div class="tablewrap"><div class="empty">(empty)</div></div></div>
+            <div class="sr-t"><span class="cap">jobs.postings</span><div class="tablewrap"><div class="empty">(empty)</div></div></div>
+            <div class="sr-t"><span class="cap">jobs.skills</span><div class="tablewrap"><div class="empty">(empty)</div></div></div>
+            <div class="sr-t"><span class="cap">jobs.posting_skills</span><div class="tablewrap"><div class="empty">(empty)</div></div></div>
+          </div>
+        </div></li>
+
+        <li><span class="num">01</span><div class="body">
+          <span class="what">First monthly run, 15 Oct · <code>run.py</code></span>
+          <span class="detail"><code>run.py</code> logs the run, scrapes and inserts each posting. <code>other_skills</code> isn't part of the insert, so it starts as <code>NULL</code>. <code>jobs.raw_postings</code> also gets one row of raw JSON per job, with <code>run_id = 1</code>.</span>
+          <div class="sr-tables">
+            <div class="sr-t"><span class="cap">core.run_log</span><div class="tablewrap"><table>
+              <thead><tr><th>run_id</th><th>status</th><th>rows_fetched</th><th>rows_new</th></tr></thead>
+              <tbody><tr class="new"><td>1</td><td>succeeded</td><td>3</td><td>3</td></tr></tbody>
+            </table></div></div>
+          </div>
+          <div class="sr-t"><span class="cap">jobs.postings</span><div class="tablewrap"><table>
+            <thead><tr><th>job_id</th><th>title</th><th>first_seen_at</th><th>last_seen_at</th><th>times_seen</th><th>other_skills</th></tr></thead>
+            <tbody>
+              <tr class="new"><td>4012</td><td>Senior Data Analyst</td><td>2026-10-15</td><td>2026-10-15</td><td>1</td><td class="null">NULL</td></tr>
+              <tr class="new"><td>3950</td><td>Data Scientist</td><td>2026-10-15</td><td>2026-10-15</td><td>1</td><td class="null">NULL</td></tr>
+              <tr class="new"><td>3987</td><td>Analytics Engineer</td><td>2026-10-15</td><td>2026-10-15</td><td>1</td><td class="null">NULL</td></tr>
+            </tbody>
+          </table></div></div>
+        </div></li>
+
+        <li><span class="num" style="color:var(--warm)">02</span><div class="body">
+          <span class="what">Pass 1 · <code>skill_discover.py</code></span>
+          <span class="detail"><b>Nothing changes in the database.</b> The script reads a sample from <code>postings_dedup</code> and writes <code>skills_draft.yaml</code> on your computer. You edit the draft and save it as <code>skills.yaml</code>:</span>
+          <pre class="sr-yaml">- skill: SQL
+  category: technical
+  definition: Writing queries to extract, join and transform data.
+- skill: Presenting to leadership
+  category: communication
+  definition: Explaining results and recommendations to senior stakeholders.
+- skill: Mentoring
+  category: leadership
+  definition: Coaching and developing other analysts.</pre>
+        </div></li>
+
+        <li><span class="num" style="color:var(--warm)">03</span><div class="body">
+          <span class="what">First Pass 2 run · <code>skill_tag.py</code></span>
+          <span class="detail"><b>3a.</b> <code>sync_skills</code> copies the YAML into <code>jobs.skills</code>. <b>3b.</b> The queue is every posting where <code>other_skills</code> is <code>NULL</code>: all three. <b>3c.</b> Each posting is tagged. <code>found</code> goes to <code>jobs.posting_skills</code>, and <code>other</code> goes to <code>other_skills</code>. All three are now marked as done, so running the script again straight away would tag nothing.</span>
+          <div class="sr-tables">
+            <div class="sr-t"><span class="cap">jobs.skills</span><div class="tablewrap"><table>
+              <thead><tr><th>skill</th><th>category</th></tr></thead>
+              <tbody>
+                <tr class="new"><td>SQL</td><td>technical</td></tr>
+                <tr class="new"><td>Presenting to leadership</td><td>communication</td></tr>
+                <tr class="new"><td>Mentoring</td><td>leadership</td></tr>
+              </tbody>
+            </table></div></div>
+            <div class="sr-t"><span class="cap">jobs.posting_skills</span><div class="tablewrap"><table>
+              <thead><tr><th>job_id</th><th>skill</th><th>level</th></tr></thead>
+              <tbody>
+                <tr class="new"><td>4012</td><td>SQL</td><td>required</td></tr>
+                <tr class="new"><td>4012</td><td>Presenting to leadership</td><td>preferred</td></tr>
+                <tr class="new"><td>3950</td><td>SQL</td><td>required</td></tr>
+                <tr class="new"><td>3950</td><td>Mentoring</td><td>preferred</td></tr>
+                <tr class="new"><td>3987</td><td>SQL</td><td>required</td></tr>
+              </tbody>
+            </table></div></div>
+          </div>
+          <div class="sr-t"><span class="cap">jobs.postings</span><div class="tablewrap"><table>
+            <thead><tr><th>job_id</th><th>title</th><th>times_seen</th><th>other_skills</th></tr></thead>
+            <tbody>
+              <tr class="upd"><td>4012</td><td>Senior Data Analyst</td><td>1</td><td>{causal ml}</td></tr>
+              <tr class="upd"><td>3950</td><td>Data Scientist</td><td>1</td><td>{}</td></tr>
+              <tr class="upd"><td>3987</td><td>Analytics Engineer</td><td>1</td><td>{dbt,data modeling}</td></tr>
+            </tbody>
+          </table></div></div>
+        </div></li>
+
+        <li><span class="num">04</span><div class="body">
+          <span class="what">Second monthly run, 15 Nov · <code>run.py</code></span>
+          <span class="detail">The scrape finds 4012 again, plus a new posting, 4100. 3950 and 3987 aren't seen this time.</span>
+          <div class="sr-tables">
+            <div class="sr-t"><span class="cap">core.run_log</span><div class="tablewrap"><table>
+              <thead><tr><th>run_id</th><th>status</th><th>rows_fetched</th><th>rows_new</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>succeeded</td><td>3</td><td>3</td></tr>
+                <tr class="new"><td>2</td><td>succeeded</td><td>2</td><td>1</td></tr>
+              </tbody>
+            </table></div></div>
+          </div>
+          <div class="sr-t"><span class="cap">jobs.postings</span><div class="tablewrap"><table>
+            <thead><tr><th>job_id</th><th>title</th><th>first_seen_at</th><th>last_seen_at</th><th>times_seen</th><th>other_skills</th></tr></thead>
+            <tbody>
+              <tr class="upd"><td>4012</td><td>Senior Data Analyst</td><td>2026-10-15</td><td>2026-11-15</td><td>2</td><td>{causal ml}</td></tr>
+              <tr><td>3950</td><td>Data Scientist</td><td>2026-10-15</td><td>2026-10-15</td><td>1</td><td>{}</td></tr>
+              <tr><td>3987</td><td>Analytics Engineer</td><td>2026-10-15</td><td>2026-10-15</td><td>1</td><td>{dbt,data modeling}</td></tr>
+              <tr class="new"><td>4100</td><td>BI Developer</td><td>2026-11-15</td><td>2026-11-15</td><td>1</td><td class="null">NULL</td></tr>
+            </tbody>
+          </table></div></div>
+          <ul class="detail" style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px">
+            <li><b>4012</b> hits <code>on conflict (job_id) do update</code>: <code>last_seen_at</code> moves forward and <code>times_seen</code> goes up to 2. Its <code>other_skills</code> stays as it was, because the upsert only refreshes the columns listed in <code>load.py</code>'s <code>COLUMNS</code>. So a job seen again isn't tagged again.</li>
+            <li><b>4100</b> is new, so it starts as <code>NULL</code>.</li>
+            <li><b>3950 and 3987</b> aren't deleted. Postings are kept forever, and <code>last_seen_at</code> shows when each was last seen.</li>
+          </ul>
+        </div></li>
+
+        <li><span class="num" style="color:var(--warm)">05</span><div class="body">
+          <span class="what">Second Pass 2 run · <code>skill_tag.py</code></span>
+          <span class="detail"><code>sync_skills</code> runs, finds the YAML unchanged, and leaves <code>jobs.skills</code> the same. The queue is just <b>4100</b>, the only <code>NULL</code>. It's the only posting sent to Claude, which is why the monthly cost stays small.</span>
+          <div class="sr-tables">
+            <div class="sr-t"><span class="cap">jobs.posting_skills</span><div class="tablewrap"><table>
+              <thead><tr><th>job_id</th><th>skill</th><th>level</th></tr></thead>
+              <tbody>
+                <tr><td colspan="3" style="color:var(--muted)">… 5 rows from stage 03 …</td></tr>
+                <tr class="new"><td>4100</td><td>SQL</td><td>required</td></tr>
+              </tbody>
+            </table></div></div>
+            <div class="sr-t"><span class="cap">jobs.postings</span><div class="tablewrap"><table>
+              <thead><tr><th>job_id</th><th>other_skills</th></tr></thead>
+              <tbody>
+                <tr><td>4012</td><td>{causal ml}</td></tr>
+                <tr><td>3950</td><td>{}</td></tr>
+                <tr><td>3987</td><td>{dbt,data modeling}</td></tr>
+                <tr class="upd"><td>4100</td><td>{power bi,dax}</td></tr>
+              </tbody>
+            </table></div></div>
+          </div>
+        </div></li>
+
+        <li><span class="num" style="color:var(--cool)">→</span><div class="body">
+          <span class="what">What the views show now</span>
+          <span class="detail"><code>jobs.role_skills</code> counts the skills on your list by category. The emerging skills come from <code>other_skills</code>: <code>causal ml</code>, <code>dbt</code>, <code>data modeling</code>, <code>power bi</code> and <code>dax</code>, each seen once.</span>
+          <div class="sr-tables">
+            <div class="sr-t"><span class="cap">jobs.role_skills · grouped</span><div class="tablewrap"><table>
+              <thead><tr><th>category</th><th>skill</th><th>roles</th></tr></thead>
+              <tbody>
+                <tr><td>technical</td><td>SQL</td><td>4</td></tr>
+                <tr><td>communication</td><td>Presenting to leadership</td><td>1</td></tr>
+                <tr><td>leadership</td><td>Mentoring</td><td>1</td></tr>
+              </tbody>
+            </table></div></div>
+          </div>
+          <span class="detail">If <code>dbt</code> keeps showing up, add it to <code>skills.yaml</code> and run <code>skill_tag.py --retag dbt</code>. That sets <code>other_skills</code> back to <code>NULL</code> for postings that mention dbt, and they're tagged again with dbt now on the list.</span>
+        </div></li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>Who writes what, and when</h2>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Table / column</th><th>SQL</th><th>Done by</th><th>When</th></tr></thead>
+          <tbody>
+            <tr><td><code>jobs.postings</code> (the table)</td><td><code>create table</code></td><td><code>sql/010</code> via <code>core.db</code></td><td>once, at setup</td></tr>
+            <tr><td><code>jobs.postings</code> rows</td><td><code>insert … on conflict do update</code></td><td><code>load.upsert_postings</code> (<code>run.py</code>)</td><td>every month</td></tr>
+            <tr><td><code>jobs.skills</code></td><td>upsert + delete</td><td><code>sync_skills</code> (<code>skill_tag.py</code>)</td><td>start of each tagging run</td></tr>
+            <tr><td><code>jobs.posting_skills</code></td><td>delete + insert per posting</td><td>tagging loop (<code>skill_tag.py</code>)</td><td>once per posting tagged</td></tr>
+            <tr><td><code>jobs.postings.other_skills</code></td><td><code>update … where job_id</code></td><td>tagging loop (<code>skill_tag.py</code>)</td><td>once per posting tagged</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  var pages = ["overview", "pipeline", "database", "llm", "files", "sample"];
+  function show() {
+    var k = (location.hash || "").replace("#", "");
+    if (pages.indexOf(k) < 0) k = "overview";
+    pages.forEach(function (p) {
+      document.getElementById("p-" + p).hidden = (p !== k);
+      var a = document.querySelector('nav.tabs a[data-k="' + p + '"]');
+      if (p === k) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+  }
+  window.addEventListener("hashchange", function () { show(); window.scrollTo(0, document.querySelector("nav.tabs").offsetTop - 12); });
+  show();
+})();
+</script>
+</body>
+</html>

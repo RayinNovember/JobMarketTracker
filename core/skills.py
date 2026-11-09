@@ -141,10 +141,10 @@ def build_list(claude: Claude, counts: Counter, size: str = "40 to 60") -> list[
 # ---------- Pass 2: tag postings against the list ----------
 class SkillTagger:
     
-    def __init__(self, skills: list[dict], claude: Claude):
+    def __init__(self, skills: list[dict], claude: Claude | None = None):
         self.skills = skills
-        self.claude = claude
-        self.names = {s["skill"] for s in skills}
+        self.claude = claude or Claude()
+        self.names = [s["skill"] for s in skills]
         
         by_category = []
         for category in CATEGORIES:

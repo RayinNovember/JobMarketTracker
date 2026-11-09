@@ -50,6 +50,9 @@ create table if not exists jobs.postings (
 -- Backfill existing rows with: uv run python -m projects.linkedin_jobs.run --rehash
 alter table jobs.postings add column if not exists job_hash text;
 
+-- Module 12: skills found outside skills.yaml. NULL = skills not extracted yet.
+alter table jobs.postings add column if not exists other_skills text[];
+
 create index if not exists postings_first_seen_idx on jobs.postings (first_seen_at);
 create index if not exists postings_content_hash_idx on jobs.postings (content_hash);
 create index if not exists postings_job_hash_idx on jobs.postings (job_hash);

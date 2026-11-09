@@ -3799,14 +3799,82 @@ class Claude:
 - `CATEGORIES` and `LEVELS` are the only values allowed; the JSON schemas use them as `enum`s, so the model can't invent a fifth category.
 - `CATEGORY_HELP` and `IGNORE` are prompt text shared by both passes. `IGNORE` matters for postings like DoorDash's, where two-thirds of the text is benefits and legal notices.
 
-**`Claude`** wraps one request and the token bookkeeping.
+**`Claude`** wraps one request and the token bookkeeping. `client or anthropic.Anthropic(...)` uses a client you pass in, or creates a real one with your key. Being able to pass one in is what lets the tests use a fake (12.9).
 
-- `client or anthropic.Anthropic(...)` uses a client you pass in, or creates a real one with your key. Being able to pass one in is what lets the tests use a fake (12.9).
-- `ask(...)` sends one request and returns the parsed JSON. The `*` in `def ask(self, *, system, ...)` makes every argument after it **keyword-only**: you must write `ask(system=..., content=...)`, which keeps calls with several similar strings readable and hard to mix up.
-- `output_config` sets two things: `effort` (how much work the model puts into an answer; `low` is plenty for tagging) and `format`, which turns on **structured outputs**: the reply is guaranteed to be valid JSON matching `schema`. Which schema depends on the caller; `Claude` itself has none.
-- `thinking={"type": "disabled"}` skips the model's reasoning step. Thinking tokens are billed as output, and picking from a list doesn't need it.
-- `response.content` is a list of blocks; `next(... if block.type == "text")` takes the first text block, which holds the JSON, and `json.loads` turns it into a `dict`.
-- `cost_usd` is a **property**: a method you read like an attribute, `claude.cost_usd`, without brackets. It's calculated from the token totals each time you read it, so it's always current without being stored.
+**How `ask()` works, step by step.** The example is `extract_open` (12.4c) asking about one posting.
+
+**Step 1: the caller passes four things.**
+
+```python
+reply = claude.ask(system=system, content=text[:MAX_TEXT_CHARS], schema=OPEN_SCHEMA, max_tokens=800)
+```
+
+- `system` is the instructions ("You extract skills from job postings…").
+- `content` is the posting itself, cut to 8,000 characters to cap the cost.
+- `schema` is the JSON shape the reply must have.
+- `max_tokens` is a hard limit on the length of the reply.
+
+The `*` in `def ask(self, *, system, ...)` makes every argument after it **keyword-only**. You must write `system=...` and `content=...`, which stops two similar strings being passed in the wrong order.
+
+**Step 2: `output_config` decides the shape of the reply.**
+
+```python
+output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
+thinking={"type": "disabled"},
+```
+
+- `effort` is how much work the model puts into its answer. `low` is plenty for reading one posting.
+- `format` turns on **structured outputs**. The API forces the reply to be valid JSON that matches `schema`. This is enforced while the reply is written, not checked afterwards, so you never get extra prose, a missing key or a category outside the `enum`. `Claude` has no schema of its own. Each caller passes the one it needs.
+- `thinking` is turned off. Thinking tokens are billed as output, and reading one posting doesn't need them.
+
+With `OPEN_SCHEMA`, the model must write text in exactly this shape:
+
+```json
+{"skills": [{"name": "sql queries", "category": "technical"},
+            {"name": "presenting to executives", "category": "communication"}]}
+```
+
+**Step 3: turn the response into a `dict`.**
+
+```python
+return json.loads(next(block.text for block in response.content if block.type == "text"))
+```
+
+`response.content` is not a string. It's a list of **content blocks**, because a reply can also contain thinking or tool-use blocks:
+
+```python
+# input: response.content
+[TextBlock(type="text", text='{"skills": [{"name": "sql queries", "category": "technical"}]}')]
+```
+
+`next(... if block.type == "text")` takes the first text block. That text is still a JSON *string*, and `json.loads` turns it into a Python dict:
+
+```python
+# output: what ask() returns
+{"skills": [{"name": "sql queries", "category": "technical"}]}
+```
+
+The caller then takes out the part it wants. `extract_open` returns `reply["skills"]`. That's safe without a check, because `"required": ["skills"]` in the schema guarantees the key is there.
+
+**Step 4: add up the cost.**
+
+```python
+self.input_tokens += response.usage.input_tokens
+self.output_tokens += response.usage.output_tokens
+```
+
+Every response reports the tokens it used, and `ask()` adds them to running totals:
+
+```python
+# after 3 requests of about 1,500 tokens in and 120 out each
+claude.input_tokens    # 4500
+claude.output_tokens   # 360
+claude.cost_usd        # 4500/1e6 * 0.10 + 360/1e6 * 0.50 = 0.00063
+```
+
+`cost_usd` is a **property**: a method you read like an attribute, `claude.cost_usd`, without brackets. It's calculated each time you read it, so it's always current without being stored.
+
+> **If a reply is cut off.** When a reply reaches `max_tokens` before it's finished, the JSON is incomplete and `json.loads` raises an error. The scripts in 12.5 and 12.6 catch that and skip the posting.
 
 #### 12.4b Pass 2, the tagger: `SkillTagger`
 
@@ -3885,10 +3953,130 @@ class SkillTagger:
         return found, other[:MAX_OTHER]
 ```
 
-- `__init__` builds the system prompt from `skills.yaml`, grouped by category with each skill's definition. The definitions are what make tagging consistent: "Presenting to leadership: explaining results and recommendations to senior stakeholders" tells the model where the line is.
-- The schema is **closed**. `skills` is a list of `{skill, level}` objects, where `skill` must be one of your names (`"enum": self.names`) and `level` must be `required` or `preferred`. `other_skills` is free text, for skills outside the list. It's built here rather than as a constant at the top because the names aren't known until `skills.yaml` is loaded.
-- `tag()` cleans the reply. `known` maps lowercase names to your exact names, so capitalization doesn't matter. If the model lists a skill twice, `required` wins. Other skills are lowercased, with extra spaces squeezed out (`" ".join(phrase.split())`), duplicates and already-listed skills dropped, and at most five kept. Lowercasing is what lets SQL count "Causal ML" and "causal ML" as one.
-- It returns a tuple: a dict like `{"SQL": "required", "Mentoring": "preferred"}` and a list like `["marketplace analytics"]`.
+**How `SkillTagger` works, step by step.** `__init__` runs once, when the list is loaded. `tag()` then runs once for each posting.
+
+**Step 1: `from_yaml` loads the list.**
+
+```python
+return cls(yaml.safe_load(Path(path).read_text(encoding="utf-8")), **kwargs)
+```
+
+`yaml.safe_load` turns `skills.yaml` into a list of dicts and passes it to `__init__`:
+
+```yaml
+# input: skills.yaml
+- skill: SQL
+  category: technical
+  definition: Writing queries to extract, join and transform data.
+- skill: Presenting to leadership
+  category: communication
+  definition: Explaining results and recommendations to senior stakeholders.
+```
+
+```python
+# output: the skills argument
+[{"skill": "SQL", "category": "technical", "definition": "Writing queries to extract, join and transform data."},
+ {"skill": "Presenting to leadership", "category": "communication", "definition": "Explaining results and recommendations to senior stakeholders."}]
+```
+
+`@classmethod` means you call it on the class, `SkillTagger.from_yaml(path)`, before any object exists. `cls(...)` then builds one. `**kwargs` passes extra arguments through, such as `claude=` in the tests.
+
+**Step 2: `__init__` builds the system prompt.**
+
+```python
+lines = [f"- {s['skill']}: {s['definition']}" for s in skills if s["category"] == category]
+```
+
+The loop goes through `CATEGORIES` in order. For each category it collects that category's skills and joins them under a heading. A category with no skills is skipped. The end of `self.system` looks like this:
+
+```text
+...Ignore the company description, benefits, pay, legal and equal-opportunity text. ...
+
+Technical:
+- SQL: Writing queries to extract, join and transform data.
+
+Communication:
+- Presenting to leadership: Explaining results and recommendations to senior stakeholders.
+```
+
+The definitions are what make tagging consistent, because they tell the model where the line is. If the tagger keeps getting a skill wrong, you fix its definition in `skills.yaml`, not the code.
+
+**Step 3: `__init__` builds a closed schema.**
+
+```python
+"skill": {"type": "string", "enum": self.names},
+"level": {"type": "string", "enum": LEVELS},
+```
+
+`self.names` is `["SQL", "Presenting to leadership"]`, so the API won't let the model write any other skill name. Unlike `OPEN_SCHEMA` (12.4c), this schema is **closed**. That's what guarantees the same skill always has the same name, so SQL can count it. `other_skills` stays free text, for skills outside the list. The schema is built here rather than as a constant at the top of the file, because the names aren't known until `skills.yaml` is loaded.
+
+> `self.names` must be a **list**, not a set (`{...}`). The schema is sent as JSON, and Python can't convert a set to JSON, so a set fails with `TypeError` on the first request.
+
+**Step 4: `tag()` sends one posting.**
+
+```python
+reply = self.claude.ask(system=self.system, content=text[:MAX_TEXT_CHARS],
+                        schema=self.schema, max_tokens=1000)
+```
+
+The reply follows the closed schema:
+
+```python
+# output: reply
+{"skills": [{"skill": "SQL", "level": "required"},
+            {"skill": "Presenting to leadership", "level": "preferred"},
+            {"skill": "SQL", "level": "preferred"}],              # the model listed SQL twice
+ "other_skills": ["Causal ML", "causal  ml", "sql", "Marketplace analytics"]}
+```
+
+**Step 5: clean the skills on the list.**
+
+```python
+known = {n.lower(): n for n in self.names}
+for item in reply["skills"]:
+    name = known.get(item["skill"].lower())
+    if name and found.get(name) != "required":
+        found[name] = item["level"]
+```
+
+`known` maps lowercase names back to your exact spelling: `{"sql": "SQL", "presenting to leadership": "Presenting to leadership"}`. For each item in the reply:
+
+| Item | `name` | `found.get(name)` | Result |
+| --- | --- | --- | --- |
+| `SQL`, required | `"SQL"` | `None` | added: `{"SQL": "required"}` |
+| `Presenting to leadership`, preferred | `"Presenting to leadership"` | `None` | added as `preferred` |
+| `SQL`, preferred | `"SQL"` | `"required"` | skipped: `required` wins |
+
+```python
+# output: found
+{"SQL": "required", "Presenting to leadership": "preferred"}
+```
+
+**Step 6: clean the other skills.**
+
+```python
+for phrase in reply["other_skills"]:
+    phrase = " ".join(phrase.lower().split())
+    if phrase and phrase not in other and phrase not in known:
+        other.append(phrase)
+return found, other[:MAX_OTHER]
+```
+
+Each phrase is lowercased, and `" ".join(phrase.split())` squeezes runs of spaces into one. A phrase is then dropped if it's empty, already kept, or already on your list:
+
+| Phrase | Cleaned | Kept? |
+| --- | --- | --- |
+| `Causal ML` | `causal ml` | yes |
+| `causal  ml` | `causal ml` | no, duplicate |
+| `sql` | `sql` | no, already on your list |
+| `Marketplace analytics` | `marketplace analytics` | yes |
+
+At most `MAX_OTHER` (5) phrases are kept. Lowercasing is what lets SQL count "Causal ML" and "causal ML" as one emerging skill.
+
+```python
+# output: what tag() returns, a tuple
+({"SQL": "required", "Presenting to leadership": "preferred"}, ["causal ml", "marketplace analytics"])
+```
 
 At this point the tagger can't run: it needs a `skills.yaml`, and you don't have one. That's the job of Pass 1.
 
@@ -3970,11 +4158,101 @@ def build_list(claude: Claude, counts: Counter, size: str = "40 to 60") -> list[
     return reply["skills"]
 ```
 
-- The two functions are the two halves of discovery. `extract_open` **finds** skills in one posting; `build_list` **merges, names, defines and narrows** them into one list. The counting in between is plain Python, in `skill_discover.py`.
-- `OPEN_SCHEMA` is **open**: `name` is any string, because there's no list yet. Only the category is fixed. Compare the closed schema in `SkillTagger`, where `skill` has an `enum`.
-- `LIST_SCHEMA` is the shape of `skills.yaml` itself: `skill`, `category`, `definition`.
-- `extract_open` asks for short noun phrases ("2 to 6 words"), so you get "SQL" rather than "strong ability to write complex SQL queries", and for non-technical skills too, which the model otherwise underplays. `if not text: return []` skips the request, and its cost, for an empty posting.
-- `build_list` receives a `Counter` keyed by `(phrase, category)` and sends the phrases with their counts, one per line (`7 | communication | stakeholder management`). `counts.most_common(400)` gives the 400 most frequent, highest first: rare phrases add tokens without changing the list. `effort="medium"` gives this one harder request a little more thought, and `max_tokens=8000` leaves room for 60 skills with definitions; it runs once, so the extra cost is a fraction of a cent.
+The two functions are the two halves of discovery. `extract_open` **finds** skills in one posting. `build_list` **merges, names, defines and narrows** them into one list. It never sees a posting. Between the two, `skill_discover.py` (12.5) boils hundreds of `extract_open` replies down into a table of counts.
+
+The two schemas reflect that. `OPEN_SCHEMA` is **open**: `name` can be any string, because there's no list yet, and only the category is fixed. Compare the closed schema in `SkillTagger` (12.4b), where `skill` has an `enum`. `LIST_SCHEMA` is the shape of `skills.yaml` itself: `skill`, `category`, `definition`.
+
+**How Pass 1 works, step by step.**
+
+**Step 1: `extract_open` reads one posting.**
+
+```python
+reply = claude.ask(system=system, content=text[:MAX_TEXT_CHARS], schema=OPEN_SCHEMA, max_tokens=800)
+return reply["skills"]
+```
+
+The prompt asks for short noun phrases ("2 to 6 words"), so you get "SQL" rather than "strong ability to write complex SQL queries". It also asks for non-technical skills, which the model otherwise underplays. `if not text: return []` skips the request, and its cost, for an empty posting. Each call returns a list for one posting:
+
+```python
+# output: posting 1
+[{"name": "SQL queries", "category": "technical"},
+ {"name": "Presenting to executives", "category": "communication"},
+ {"name": "sql queries", "category": "technical"}]      # the model repeated itself
+
+# output: posting 2
+[{"name": "SQL", "category": "technical"},
+ {"name": "stakeholder management", "category": "business"}]
+```
+
+The names are free text, so the same skill appears under different names in different postings.
+
+**Step 2: `skill_discover.py` counts the phrases.**
+
+```python
+counts.update({(" ".join(s["name"].lower().split()), s["category"]) for s in found})
+```
+
+For each posting, this line does three things:
+
+- **Cleans each name.** It lowercases the name and collapses extra spaces, so "SQL queries" and "sql  queries" become the same string.
+- **Builds a set of `(phrase, category)` pairs.** Duplicates within one posting collapse, so posting 1 adds `("sql queries", "technical")` once, not twice.
+- **Adds 1 to each pair in the `Counter`.**
+
+Because of the set, a count means "**how many postings** asked for this", not how many times it was mentioned. After 500 postings:
+
+```python
+# output: counts
+Counter({("sql", "technical"): 48,
+         ("sql queries", "technical"): 21,
+         ("stakeholder management", "business"): 19,
+         ("stakeholder management", "communication"): 6,   # same phrase, other category: a separate entry
+         ...})                                              # often 2,000+ distinct pairs
+```
+
+**Step 3: `build_list` turns the counts into text.**
+
+```python
+lines = "\n".join(f"{n} | {category} | {phrase}" for (phrase, category), n in counts.most_common(400))
+```
+
+`most_common(400)` keeps the 400 most frequent pairs, highest first. Rare phrases add tokens without changing the list. Each pair becomes one line of a small table:
+
+```text
+# output: the content sent to Claude
+count | category | phrase
+48 | technical | sql
+21 | technical | sql queries
+19 | business | stakeholder management
+...
+```
+
+**Step 4: one request merges the phrases.**
+
+```python
+reply = claude.ask(system=system, content="count | category | phrase\n" + lines,
+                   schema=LIST_SCHEMA, max_tokens=8000, effort="medium")
+return reply["skills"]
+```
+
+The system prompt asks Claude to merge phrases that mean the same thing and return 40 to 60 skills, each with a name, one category and a one-sentence definition. Two settings differ from `extract_open`:
+
+- `effort="medium"` gives this harder request a little more thought.
+- `max_tokens=8000` leaves room for 60 skills with definitions.
+
+It runs only once, so the extra cost is a fraction of a cent.
+
+The counts guide the merging. A skill with 48 + 21 + 12 postings clearly deserves its own entry, while a phrase with 3 postings can fold into a broader skill. "Stakeholder management" appeared under both `business` and `communication`, so it's merged into one skill with one category:
+
+```python
+# output: what build_list returns
+[{"skill": "SQL", "category": "technical",
+  "definition": "Writing and optimizing SQL queries to retrieve and transform data."},
+ {"skill": "Stakeholder management", "category": "communication",
+  "definition": "Working with business partners to agree on goals and share results."},
+ ...]
+```
+
+**Why it's split this way.** `extract_open` makes about 500 small, cheap requests, each of which fits easily in a prompt. `Counter` does the counting in Python, so the frequencies are exact. `build_list` makes the one request that needs judgment, and it works from a 400-line summary instead of 500 full postings.
 
 **The finished file**, top to bottom: imports → constants → `Claude` → `SkillTagger` (Pass 2) → schemas, `extract_open` and `build_list` (Pass 1). Run order is the reverse of design order: you'll run Pass 1 next (12.5), then Pass 2 (12.6).
 
@@ -4061,9 +4339,86 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- It samples from `jobs.postings_dedup`, so a role reposted three times can't count three times. `order by random()` takes a random sample, so the list reflects the whole month rather than the newest postings.
-- `counts.update({...})` adds a **set** of `(phrase, category)` pairs per posting. A set holds each pair once, so a posting that says "SQL" five times still counts once.
-- It writes `skills_draft.yaml`, not `skills.yaml`, so it never overwrites a list you've already edited. `yaml.safe_dump(..., sort_keys=False)` keeps the keys in the order `skill, category, definition`.
+**How `skill_discover.py` works, step by step.**
+
+**Step 1: sample postings.**
+
+```sql
+select title, description_text from jobs.postings_dedup
+ where description_text is not null
+ order by random()
+ limit %s
+```
+
+It samples from `jobs.postings_dedup`, so a role reposted three times can't count three times. `order by random()` takes a random sample, so the list reflects the whole month, not just the newest postings. `fetchall()` returns a list of tuples:
+
+```python
+# output: rows
+[("Senior Data Analyst", "About us: ... You will write SQL daily and present to executives ..."),
+ ("Data Scientist, Growth", "We're hiring ... Python, A/B testing, stakeholder management ..."),
+ ...]                                                     # 500 rows
+```
+
+**Step 2: read and count each posting.**
+
+```python
+for i, (title, description) in enumerate(rows, start=1):
+    try:
+        found = extract_open(claude, f"{title}\n\n{description}")
+    except Exception as e:
+        failed += 1
+        ...
+        continue
+    counts.update({(" ".join(s["name"].lower().split()), s["category"]) for s in found})
+```
+
+- `enumerate(rows, start=1)` numbers the rows from 1, so `i % 50 == 0` prints progress after every 50th posting.
+- The title goes in front of the description because the title often names the main skill.
+- If one request fails (a network blip, or a reply cut off at `max_tokens`), that posting is skipped and counted in `failed`, and the loop goes on.
+- `counts.update` adds a **set** of `(phrase, category)` pairs, so a posting that mentions SQL five times still counts once. 12.4c, Step 2, shows the `Counter` this builds.
+
+```text
+# printed while it runs
+Reading 500 postings with claude-haiku-5-5
+  50 read, $0.014 so far
+  100 read, $0.028 so far
+  ...
+2,184 distinct phrases. Grouping them into a list...
+```
+
+**Step 3: merge, sort and write.**
+
+```python
+skills = build_list(claude, counts)
+skills.sort(key=lambda s: (s["category"], s["skill"]))
+```
+
+`build_list` returns the merged list (12.4c, Steps 3 and 4). `sort` with a tuple key orders it by category first, then by name within each category, so the draft is easy to review one category at a time.
+
+```python
+args.out.write_text(header + yaml.safe_dump(skills, sort_keys=False, allow_unicode=True, width=100),
+                    encoding="utf-8")
+```
+
+- It writes `skills_draft.yaml`, not `skills.yaml`, so it never overwrites a list you've already edited.
+- `sort_keys=False` keeps the keys in the order `skill, category, definition`.
+- `allow_unicode=True` writes characters like "é" as they are, instead of as escape codes.
+- `width=100` wraps long definitions at 100 characters.
+
+```yaml
+# output: skills_draft.yaml
+# Draft skill list from 498 postings. Review it, then save as skills.yaml.
+# Rename, merge, split or delete freely; categories: technical, communication, business, leadership.
+
+- skill: Metric definition and KPI design
+  category: business
+  definition: Choosing and defining the measures a team uses to track success.
+- skill: Presenting to leadership
+  category: communication
+  definition: Explaining findings and recommendations to senior stakeholders.
+```
+
+The header says 498 because two postings were skipped (`len(rows) - failed`).
 
 **Checkpoint, a quick look (about $0.01):**
 
@@ -4213,13 +4568,109 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- **`sync_skills`** makes the database match `skills.yaml` at the start of every run. The upsert adds new skills and updates categories and definitions (`excluded.` is the incoming row, as in Module 5). Then `skill <> all(%s)` ("not equal to every name in the list") deletes skills you removed from the YAML, first from `posting_skills` because of the foreign key, then from `skills`.
-- **What's left to tag** is every posting where `other_skills is null`: `NULL` means "not tagged yet". Each tagged posting gets a list, even an empty `'{}'`, so it isn't tagged again.
-- **Writing one posting:** delete its old skill rows, insert the new ones with `executemany`, and store `other_skills`. Deleting first is what makes re-tagging safe.
-- **`--retag TEXT`** sets `other_skills` back to `NULL` for postings whose description contains the text (`ilike` is a case-insensitive `like`; `%` matches anything). `--retag-all` does it for every posting. The tagging loop then picks them up as usual.
-- `limit %s` with `None` becomes `limit NULL` in SQL, which Postgres reads as "no limit", so `--limit` is optional with no extra code. `order by first_seen_at desc` tags the newest postings first.
-- One failed request (a network blip, a rate limit) is printed and skipped; the posting stays `NULL` and is retried next run. Five failures in a row usually mean something systematic, like a wrong key or empty credit, so the script stops instead of printing thousands of errors.
-- It commits every 50 postings, so a crash halfway keeps the work done so far, and prints the real cost from the token counts Anthropic reports.
+**How `skill_tag.py` works, step by step.**
+
+**Step 1: load the list.**
+
+```python
+path = HERE / "skills.yaml"
+if not path.exists():
+    ...
+    return 1
+tagger = SkillTagger.from_yaml(path)
+```
+
+If you haven't saved `skills.yaml` yet, the script stops with a message telling you to run Pass 1 first. Otherwise `from_yaml` builds the tagger, including its prompt and closed schema (12.4b, Steps 1 to 3).
+
+**Step 2: `sync_skills` makes `jobs.skills` match the YAML.**
+
+```sql
+insert into jobs.skills (skill, category, definition) values (%(skill)s, %(category)s, %(definition)s)
+on conflict (skill) do update set category = excluded.category, definition = excluded.definition
+```
+
+```python
+conn.execute("delete from jobs.posting_skills where skill <> all(%s)", (names,))
+conn.execute("delete from jobs.skills where skill <> all(%s)", (names,))
+```
+
+The upsert adds new skills and updates categories and definitions. As in Module 5, `excluded.` refers to the incoming row. `skill <> all(%s)` means "not equal to any name in the list", so the deletes remove skills you took out of the YAML. They come out of `posting_skills` first, because its foreign key would refuse to let `skills` lose a row that's still in use. Say you moved Mentoring to leadership and deleted "Excel":
+
+| `jobs.skills` before | `skills.yaml` now | `jobs.skills` after |
+| --- | --- | --- |
+| SQL · technical | SQL · technical | SQL · technical (unchanged) |
+| Mentoring · communication | Mentoring · leadership | Mentoring · **leadership** (updated) |
+| Excel · technical | (deleted) | (removed, along with its `posting_skills` rows) |
+| | Causal inference · technical | Causal inference · technical (**added**) |
+
+Moving Mentoring needs no re-tagging. Every chart follows the change, because the category is stored only in `jobs.skills`.
+
+**Step 3: optionally mark postings for re-tagging.**
+
+```python
+conn.execute("update jobs.postings set other_skills = null where description_text ilike %s",
+             (f"%{args.retag}%",))
+```
+
+`--retag agent` becomes `ilike '%agent%'`. `ilike` is a case-insensitive `like`, and `%` matches anything, so this finds every posting whose description mentions "agent", "Agentic" or "AGENTS". Setting `other_skills` back to `NULL` puts those postings in the queue for the next step. `--retag-all` does the same for every posting.
+
+**Step 4: pick what's left to tag.**
+
+```sql
+select job_id, title, description_text from jobs.postings
+ where other_skills is null and description_text is not null
+ order by first_seen_at desc
+ limit %s
+```
+
+`NULL` in `other_skills` means "not tagged yet". Each tagged posting gets a list, even an empty one (`'{}'`), so it isn't picked again:
+
+| job_id | other_skills | Picked? |
+| --- | --- | --- |
+| 4012 | `NULL` | yes, never tagged |
+| 3987 | `{causal ml}` | no |
+| 3950 | `{}` | no, tagged, with no new skills |
+
+`limit %s` with `None` becomes `limit NULL`, which Postgres reads as "no limit", so `--limit` is optional without any extra code. `order by first_seen_at desc` tags the newest postings first.
+
+**Step 5: tag and write each posting.**
+
+```python
+found, other = tagger.tag(f"{title}\n\n{description}")
+...
+conn.execute("delete from jobs.posting_skills where job_id = %s", (job_id,))
+cur.executemany("insert into jobs.posting_skills (job_id, skill, level) values (%s, %s, %s)",
+                [(job_id, skill, level) for skill, level in found.items()])
+conn.execute("update jobs.postings set other_skills = %s where job_id = %s", (other, job_id))
+```
+
+`tag()` returns the tuple from 12.4b, Step 6. The list comprehension turns the dict into one row per skill:
+
+```python
+# input: what tag() returned for job 4012
+({"SQL": "required", "Presenting to leadership": "preferred"}, ["causal ml"])
+
+# rows inserted into jobs.posting_skills
+[("4012", "SQL", "required"), ("4012", "Presenting to leadership", "preferred")]
+
+# and jobs.postings.other_skills for 4012 becomes
+{causal ml}
+```
+
+The script deletes the posting's old skill rows first. That's what makes re-tagging safe: a skill the tagger no longer finds disappears instead of lingering.
+
+**Step 6: handle failures, save progress, report the cost.**
+
+- **One failed request** (a network blip, a rate limit) is printed and skipped. The posting stays `NULL`, so it's retried on the next run.
+- **Five failures in a row** (`MAX_FAILURES_IN_A_ROW`) usually mean something systematic, like a wrong key or no credit left, so the script stops instead of printing thousands of errors. `in_a_row` goes back to 0 after every success.
+- **It commits every 50 postings**, so if the script crashes halfway, the work done so far is kept.
+
+```text
+# printed at the end
+Tagged 10, failed 0. Tokens: 18,240 in, 1,130 out. Cost: $0.002
+```
+
+The exit code is 1 only if every posting failed (`failed and not done`), so a scheduled run shows red only when nothing worked.
 
 **Checkpoint, a small run (about $0.005):**
 
