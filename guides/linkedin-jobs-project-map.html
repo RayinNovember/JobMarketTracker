@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
 <style>
-/* Same dark operations-console look as dayforce-integration-map.html. Five hash-routed pages; each opens with a map, then a numbered run order. Dashed boxes = not built yet. */
+/* Same dark operations-console look as dayforce-integration-map.html. Six hash-routed pages; each opens with a map, then a numbered run order. Dashed boxes = not built yet. */
 :root {
   color-scheme: dark;
   --bg: #0e1317;
@@ -114,6 +114,52 @@ ol.road > li:last-child::before { display: none; }
 .tbl.file { color: var(--accent); }
 .tbl.db { color: var(--cool); }
 .tbl.todo { border-style: dashed; color: var(--muted); }
+.tables .lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); align-self: center; min-width: 38px; }
+.tbl.mod { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.road.llm .tbl.mod { border-color: color-mix(in srgb, var(--warm) 45%, var(--line)); }
+.objs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.obj { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--c, var(--cool)); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.obj .k { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+.obj b { font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+.obj ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.obj p { font-size: 13px; color: var(--muted); }
+
+/* run.py roadmap on tab 1: function chips (name + module) and input/output panels */
+.tbl.fn b { font-weight: 500; color: var(--fg); }
+.tbl.fn i { font-style: normal; color: var(--muted); margin-left: 6px; }
+.io { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.io > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.io .h { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.io pre { margin: 0; background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; overflow-x: auto; white-space: pre; }
+.io pre .c { color: var(--muted); }
+.lines { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.defonly { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border: 1px dashed var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+ol.road.sub { margin-top: 8px; }
+ol.road.sub > li { grid-template-columns: 40px 1fr; }
+ol.road.sub .num { width: 40px; font-size: 11.5px; }
+ol.road.sub > li::before { left: 19px; }
+
+/* collapsed code box under each roadmap step */
+details.src { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+details.src summary { cursor: pointer; padding: 5px 10px; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+details.src summary:hover { color: var(--fg); }
+details.src[open] summary { border-bottom: 1px solid var(--line); }
+details.src pre { margin: 0; padding: 8px 10px; background: var(--raise); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; overflow-x: auto; white-space: pre; }
+details.src pre .c { color: var(--muted); }
+/* VS Code Dark Modern token colors (plus the constant colour from your settings.json) */
+details.src pre.hl { background: #1f1f1f; color: #d4d4d4; }
+.hl .ln { color: #6e7681; user-select: none; }
+.hl .kw { color: #c586c0; }      /* import, if, for, return, with … */
+.hl .st { color: #569cd6; }      /* def, class, None, True, self, in, not … */
+.hl .fn { color: #dcdcaa; }      /* function names and calls */
+.hl .cl { color: #4ec9b0; }      /* classes and built-in types */
+.hl .va { color: #9cdcfe; }      /* variables, parameters, attributes */
+.hl .co { color: #4fc1ff; }      /* CONSTANTS */
+.hl .s  { color: #ce9178; }      /* strings */
+.hl .n  { color: #b5cea8; }      /* numbers */
+.hl .cm { color: #6a9955; }      /* comments */
+details.src .notes { padding: 8px 10px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); }
+@media (max-width: 720px) { .io { grid-template-columns: 1fr; } }
 
 .finding { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; max-width: 86ch; }
 .finding.warn { border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); background: var(--warn-soft); }
@@ -182,8 +228,8 @@ svg .ah-cool { fill: var(--cool); }
 
   <div class="status">
     <div class="stat" style="--c:var(--accent)"><b>Monthly pipeline · running</b><span><code>run.py</code> on GitHub Actions, the 15th of each month. Scrape → transform → load → log.</span></div>
-    <div class="stat" style="--c:var(--cool)"><b>Database · 3 migrations</b><span><code>001_core</code>, <code>010_linkedin_jobs</code>, <code>020_analysis</code>. Two tables of data, one run log, seven views.</span></div>
-    <div class="stat" style="--c:var(--warm)"><b>Module 12 · Pass 1 written</b><span><code>core/skills.py</code> committed, <code>skill_discover.py</code> not committed yet. Pass 2 still to build.</span></div>
+    <div class="stat" style="--c:var(--cool)"><b>Database · 4 migrations</b><span><code>001</code>, <code>010</code>, <code>020</code> applied. <code>040_skills</code> and the <code>other_skills</code> line in <code>010</code> are written: apply them with <code>core.db</code>.</span></div>
+    <div class="stat" style="--c:var(--warm)"><b>Module 12 · both passes written</b><span><code>skill_discover.py</code> and <code>skill_tag.py</code> are ready. Next: run Pass 1 and save <code>skills.yaml</code>.</span></div>
   </div>
 
   <nav class="tabs" aria-label="Pages">
@@ -200,11 +246,11 @@ svg .ah-cool { fill: var(--cool); }
     <section>
       <div class="intro">
         <h2>Two jobs, one database</h2>
-        <p>The project has two flows that meet in Postgres. The <span class="k-main">monthly pipeline</span> puts postings into the database. The <span class="k-llm">LLM skills module</span> reads them back, asks Claude about each one and writes skills alongside them. <span class="k-ext">Blue</span> boxes are outside services and SQL views. Dashed boxes are not built yet.</p>
+        <p>The project has two flows that meet in Postgres. The <span class="k-main">monthly pipeline</span> puts postings into the database. The <span class="k-llm">LLM skills module</span> reads them back, asks Claude about each one and writes skills alongside them. <span class="k-ext">Blue</span> boxes are outside services and SQL views. Dashed boxes don't exist yet.</p>
       </div>
       <figure>
         <div class="scroll">
-          <svg viewBox="0 0 1040 530" role="img" aria-label="config.yaml and themes.yaml feed run.py, which runs scrape.py against the Apify actor, then transform.py, then load.py into Supabase tables core.run_log, jobs.raw_postings and jobs.postings. Views postings_dedup and the analysis views sit on top. In Module 12, skill_discover.py samples postings_dedup and asks Claude to draft skills_draft.yaml, which you review into skills.yaml. skill_tag.py, not built yet, uses skills.yaml and Claude to fill jobs.skills and jobs.posting_skills, which feed the dashboard.">
+          <svg viewBox="0 0 1040 530" role="img" aria-label="config.yaml and themes.yaml feed run.py, which runs scrape.py against the Apify actor, then transform.py, then load.py into Supabase tables core.run_log, jobs.raw_postings and jobs.postings. Views postings_dedup and the analysis views sit on top. In Module 12, skill_discover.py samples postings_dedup and asks Claude to draft skills_draft.yaml, which you review into skills.yaml. skill_tag.py uses skills.yaml and Claude to fill jobs.skills, jobs.posting_skills and the other_skills column, created by 040_skills.sql and 010.">
             <defs>
               <marker id="o1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
               <marker id="o1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-accent" d="M0,0 L10,5 L0,10 z"/></marker>
@@ -261,7 +307,8 @@ svg .ah-cool { fill: var(--cool); }
             <rect class="box" x="620" y="102" width="200" height="38" rx="5"/>
             <text class="t-mono" x="632" y="126">jobs.raw_postings</text>
             <rect class="box-accent" x="620" y="152" width="200" height="38" rx="5"/>
-            <text class="t-mono" x="632" y="176">jobs.postings</text>
+            <text class="t-mono" x="632" y="171">jobs.postings</text>
+            <text class="t-sub" x="632" y="184">+ other_skills (010)</text>
 
             <path class="flow-accent" d="M570,129 C596,129 594,71 616,71" marker-end="url(#o1a)"/>
             <line class="flow-accent" x1="570" y1="121" x2="616" y2="121" marker-end="url(#o1a)"/>
@@ -312,16 +359,18 @@ svg .ah-cool { fill: var(--cool); }
             <text class="t-sub" x="550" y="436" text-anchor="middle">not saved yet</text>
 
             <line class="flow-warm" x1="550" y1="452" x2="550" y2="472" marker-end="url(#o1w)"/>
-            <rect class="box-dim" x="420" y="476" width="160" height="44" rx="6"/>
+            <rect class="box-warm" x="420" y="476" width="160" height="44" rx="6"/>
             <text class="t-mono" x="500" y="495" text-anchor="middle">skill_tag.py</text>
-            <text class="t-sub" x="500" y="511" text-anchor="middle">Pass 2 · to build</text>
+            <text class="t-sub" x="500" y="511" text-anchor="middle">Pass 2 · written</text>
             <path class="flow-warm" d="M420,498 L90,498 L90,456" marker-end="url(#o1w)"/>
             <text class="t-arrow" x="250" y="490" text-anchor="middle">1 request per posting</text>
 
             <line class="flow-warm" x1="580" y1="498" x2="616" y2="498" marker-end="url(#o1w)"/>
-            <rect class="box-dim" x="620" y="472" width="200" height="52" rx="5"/>
-            <text class="t-mono" x="632" y="493">jobs.skills</text>
-            <text class="t-mono" x="632" y="511">jobs.posting_skills</text>
+            <path class="flow-warm" d="M580,486 C604,486 600,190 616,186" marker-end="url(#o1w)"/>
+            <text class="t-arrow" x="598" y="328" text-anchor="end">other_skills</text>
+            <rect class="box" x="620" y="472" width="200" height="52" rx="5"/>
+            <text class="t-mono" x="632" y="492">skills · posting_skills</text>
+            <text class="t-sub" x="632" y="510">040 · + role_skills view</text>
             <path class="flow-dash" d="M820,498 C850,498 846,364 866,364" marker-end="url(#o1)"/>
           </svg>
         </div>
@@ -339,13 +388,17 @@ svg .ah-cool { fill: var(--cool); }
           <thead><tr><th>Tool in core/</th><th>What it gives you</th><th>Used by</th></tr></thead>
           <tbody>
             <tr><td><code>settings.py</code></td><td>Loads <code>.env</code> and gets secrets: <code>APIFY_TOKEN</code>, <code>SUPABASE_DB_URL</code>, <code>ANTHROPIC_API_KEY</code></td><td>db, scrape, skills, check_connections</td></tr>
-            <tr><td><code>db.py</code></td><td><code>connect()</code>, <code>migrate()</code> (runs every <code>sql/*.sql</code> in name order), <code>ping()</code></td><td>run.py, skill_discover.py, two workflows</td></tr>
+            <tr><td><code>db.py</code></td><td><code>connect()</code>, <code>migrate()</code> (runs every <code>sql/*.sql</code> in name order), <code>ping()</code></td><td>run.py, skill_discover.py, skill_tag.py, two workflows</td></tr>
             <tr><td><code>runlog.py</code></td><td><code>start_run</code> / <code>finish_run</code>: one row per run in <code>core.run_log</code></td><td>run.py</td></tr>
             <tr><td><code>text.py</code></td><td><code>normalize</code>, <code>content_hash</code>, <code>ThemeTagger</code> (whole-word regex per theme)</td><td>transform.py, load.py</td></tr>
-            <tr><td><code>skills.py</code></td><td><code>Claude</code> (one request, cost tracking), <code>extract_open</code>, <code>build_list</code>, <code>SkillTagger</code></td><td>skill_discover.py, skill_tag.py (to build)</td></tr>
+            <tr><td><code>skills.py</code></td><td><code>Claude</code> (one request, cost tracking), <code>extract_open</code>, <code>build_list</code>, <code>SkillTagger</code></td><td>skill_discover.py, skill_tag.py</td></tr>
           </tbody>
         </table>
       </div>
+    </section>
+
+    <section>
+      <p class="note">For a step-by-step walk through <code>run.py</code>, with code and sample data, see <a href="#pipeline">Monthly pipeline</a>. The LLM scripts are covered the same way on <a href="#llm">LLM skills</a>.</p>
     </section>
   </div>
 
@@ -353,44 +406,265 @@ svg .ah-cool { fill: var(--cool); }
   <div class="page" id="p-pipeline" data-page="pipeline" hidden>
     <section>
       <div class="intro">
-        <h2>One run of <code>run.py</code>, in order</h2>
-        <p>Started by GitHub Actions on the 15th, or by you with <code>uv run python -m projects.linkedin_jobs.run --limit 25</code>. All the database work happens on one connection, opened once.</p>
+        <h2><code>run.py</code>, top to bottom</h2>
+        <p>What Python does when you type <code>uv run python -m projects.linkedin_jobs.run</code>. It reads the file from top to bottom. Steps 1 and 2 only <em>define</em> functions, so nothing happens there yet. Step 3 is the line that runs everything. The sample data is the 15 Oct run from the <a href="#sample">Sample Run</a> tab: searches for "data scientist" and "data analyst" find jobs 4012, 3950 and 3987, and both searches find 4012.</p>
       </div>
       <ol class="road main">
-        <li><span class="num">01</span><div class="body">
-          <span class="what">Start up and read settings</span>
-          <span class="detail"><code>core/settings.py</code> loads <code>.env</code> on your machine. On GitHub the same names come from repository secrets. <code>parse_args</code> reads <code>--limit</code> and <code>--searches</code>, which override <code>config.yaml</code>. A <code>ThemeTagger</code> is built from <code>themes.yaml</code>.</span>
-          <div class="tables"><span class="tbl file">config.yaml</span><span class="tbl file">themes.yaml</span><span class="tbl file">.env</span></div>
+
+        <li><span class="num">0</span><div class="body">
+          <span class="what">Load the file: imports and constants <span class="lines">lines 11–24</span></span>
+          <span class="detail">Python runs every import once, and <code>.env</code> is read here.</span>
+          <details class="src"><summary>Code · lines 11–24</summary><pre> 11  import argparse
+ 12  import sys
+ 13  from datetime import date
+ 14  from pathlib import Path
+ 15  
+ 16  import yaml
+ 17  
+ 18  from core import db, runlog
+ 19  from core.text import ThemeTagger
+ 20  from projects.linkedin_jobs import load, scrape
+ 21  from projects.linkedin_jobs.transform import merge_items, to_row
+ 22  
+ 23  HERE = Path(__file__).parent
+ 24  PROJECT = 'linkedin_jobs'</pre><p class="notes">Every <code>import</code> runs the module it names once. Importing <code>core.db</code> also imports <code>core.settings</code>, whose <code>load_dotenv()</code> reads <code>.env</code> into environment variables, so the secrets are available before <code>main</code> starts. <code>HERE</code> is the folder <code>run.py</code> lives in, so <code>config.yaml</code> is found wherever you run it from.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>argparse, sys, date, Path</b><i>standard library</i></span><span class="tbl fn"><b>yaml</b><i>pyyaml</i></span><span class="tbl fn"><b>db, runlog</b><i>core/</i></span><span class="tbl fn"><b>load_dotenv</b><i>core/settings.py</i></span><span class="tbl fn"><b>ThemeTagger</b><i>core/text.py</i></span><span class="tbl fn"><b>load, scrape, merge_items, to_row</b><i>projects/linkedin_jobs/</i></span></div>
+          <div class="io">
+            <div><span class="h">Input</span><pre>.env
+APIFY_TOKEN=…
+SUPABASE_DB_URL=…</pre></div>
+            <div><span class="h">Output</span><pre>HERE    = …/projects/linkedin_jobs
+PROJECT = "linkedin_jobs"
+<span class="c"># os.environ now holds the .env values</span></pre></div>
+          </div>
         </div></li>
-        <li><span class="num dim">↳</span><div class="body">
-          <span class="what">Shortcut: <code>--retag</code> or <code>--rehash</code></span>
-          <span class="detail">These re-apply <code>themes.yaml</code> or recompute <code>job_hash</code> on every stored posting, then exit. Nothing is scraped. Use them after you edit themes or change the hash.</span>
+
+        <li><span class="num dim">1</span><div class="body">
+          <span class="what"><code>def parse_args(argv)</code> <span class="defonly">defines only</span> <span class="lines">lines 26–32</span></span>
+          <span class="detail">Describes the four options. Called in 3.1.</span>
+          <details class="src"><summary>Code · lines 26–32</summary><pre> 26  def parse_args(argv: list[str] | None) -&gt; argparse.Namespace:
+ 27      ap = argparse.ArgumentParser(description='Monthly LinkedIn jobs pipeline')
+ 28      ap.add_argument('--limit',type=int,help='max jobs persearch (overriades config.yaml)')
+ 29      ap.add_argument("--searches", help="comma-separated search terms (overrides config.yaml)")
+ 30      ap.add_argument("--retag", action="store_true", help="re-tag stored postings with themes.yaml, then stop")
+ 31      ap.add_argument("--rehash", action="store_true", help="recompute job_hash for stored postings, then stop")
+ 32      return ap.parse_args(argv)</pre><p class="notes">Describes the four command-line options. It runs later, as the first thing <code>main</code> does (sub-step 3.1). <code>--retag</code> and <code>--rehash</code> use <code>store_true</code>, so they're <code>False</code> unless you type them. <code>argv=None</code> tells argparse to read the real command line. Tests pass a list instead.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>ArgumentParser, add_argument, parse_args</b><i>argparse</i></span></div>
+          <div class="io">
+            <div><span class="h">Input, when called</span><pre>uv run python -m projects.linkedin_jobs.run --limit 25</pre></div>
+            <div><span class="h">Output</span><pre>Namespace(limit=25, searches=None,
+          retag=False, rehash=False)</pre></div>
+          </div>
         </div></li>
-        <li><span class="num">02</span><div class="body">
-          <span class="what">Open a run in the log</span>
-          <span class="detail"><code>runlog.start_run</code> inserts a row with status <code>running</code> and the parameters, commits it right away, and returns a <code>run_id</code>. If the job crashes later, this row still shows that the run happened.</span>
-          <div class="tables"><span class="tbl db">core.run_log</span></div>
+
+        <li><span class="num dim">2</span><div class="body">
+          <span class="what"><code>def main(argv=None) -&gt; int</code> <span class="defonly">defines only</span> <span class="lines">lines 34–94</span></span>
+          <span class="detail">The whole pipeline as one function that returns an exit code.</span>
+          <details class="src"><summary>Code · lines 34–94</summary><pre> 34  def main(argv: list[str] | None = None) -&gt; int:
+       …            <span class="c"># the body is in the sub-steps</span></pre><p class="notes">Defines the whole pipeline as one function that returns an exit code: 0 means it worked, 1 means it failed. Keeping it in a function, instead of at the top level of the file, lets the tests call <code>main([...])</code> without anything running on import.</p></details>
         </div></li>
-        <li><span class="num">03</span><div class="body">
-          <span class="what">Scrape each search term</span>
-          <span class="detail"><code>scrape.run_search</code> converts the config into the actor's input, starts the Apify actor, waits for it to finish, then reads its dataset. It returns the items and the cost in USD. If one term fails, the error is recorded and the other terms still run.</span>
-          <div class="tables"><span class="tbl">Apify · curious_coder/linkedin-jobs-scraper</span></div>
-        </div></li>
-        <li><span class="num">04</span><div class="body">
-          <span class="what">Transform: merge, then one clean row per job</span>
-          <span class="detail"><code>merge_items</code> keeps each job ID once, even if two searches found it, and remembers which terms found it. It also removes personal data about the poster. <code>to_row</code> maps fields, parses salary text into min, max and period, computes <code>content_hash</code> and <code>job_hash</code>, and tags themes.</span>
-        </div></li>
-        <li><span class="num">05</span><div class="body">
-          <span class="what">Load: raw copy, then dedup upsert, in one transaction</span>
-          <span class="detail"><code>insert_raw</code> saves the scraper's output as JSON, one row per job per run, so the clean table can be rebuilt without scraping again. <code>upsert_postings</code> loads the rows into a temporary <code>stage</code> table, then runs <code>insert … on conflict (job_id) do update</code>. A new job gets a new row. For a known job it refreshes the fields, merges the search terms and increases <code>last_seen_at</code> and <code>times_seen</code>. <code>xmax = 0</code> tells new rows from updated ones.</span>
-          <div class="tables"><span class="tbl db">jobs.raw_postings</span><span class="tbl db">jobs.postings</span></div>
-        </div></li>
-        <li><span class="num">06</span><div class="body">
-          <span class="what">Close the run</span>
-          <span class="detail"><code>finish_run</code> records the status (<code>succeeded</code>, <code>succeeded_with_errors</code> or <code>failed</code>), the row counts, the cost and any errors. It rolls back first, so a failed transaction can't stop the log from being written. The exit code is 1 only if the run failed, which turns the GitHub run red.</span>
-          <div class="tables"><span class="tbl db">core.run_log</span></div>
+
+        <li><span class="num">3</span><div class="body">
+          <span class="what"><code>if __name__ == "__main__": sys.exit(main())</code> <span class="lines">lines 97–98</span></span>
+          <span class="detail">The line that runs <code>main()</code>. Everything below happens inside it.</span>
+          <details class="src"><summary>Code · lines 97–98</summary><pre> 97  if __name__ == "__main__":
+ 98      sys.exit(main())</pre><p class="notes">When you run the file with <code>-m</code>, Python sets <code>__name__</code> to <code>"__main__"</code>, so this line calls <code>main()</code>. When the tests import the file, <code>__name__</code> is <code>"projects.linkedin_jobs.run"</code> and nothing runs. <code>sys.exit</code> passes <code>main</code>'s return value to the shell, and GitHub Actions marks the run red on 1. Everything below happens inside <code>main</code>.</p></details>
+
+          <ol class="road main sub">
+            <li><span class="num">3.1</span><div class="body">
+              <span class="what">Read the options <span class="lines">line 35</span></span>
+          <details class="src"><summary>Code · line 35</summary><pre> 35      args = parse_args(argv)</pre></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>parse_args</b><i>run.py</i></span></div>
+              <div class="io">
+                <div><span class="h">Input</span><pre>uv run python -m projects.linkedin_jobs.run
+<span class="c"># no options: the GitHub schedule</span></pre></div>
+                <div><span class="h">Output</span><pre>args = Namespace(limit=None, searches=None,
+                 retag=False, rehash=False)</pre></div>
+              </div>
+            </div></li>
+
+            <li><span class="num">3.2</span><div class="body">
+              <span class="what">Load the config and the themes <span class="lines">lines 36–37</span></span>
+          <details class="src"><summary>Code · lines 36–37</summary><pre> 36      cfg = yaml.safe_load((HERE / "config.yaml").read_text())
+ 37      tagger = ThemeTagger.from_yaml(HERE / "themes.yaml")</pre></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>safe_load</b><i>yaml</i></span><span class="tbl fn"><b>ThemeTagger.from_yaml</b><i>core/text.py</i></span></div>
+              <div class="io">
+                <div><span class="h">Input</span><pre>config.yaml   searches, location, limits
+themes.yaml   10 themes with phrases</pre></div>
+                <div><span class="h">Output</span><pre>cfg = {"searches": ["data scientist", "data analyst"],
+       "location": "United States",
+       "date_posted": "pastMonth",
+       "limit_per_search": 1000, ...}
+tagger = ThemeTagger  <span class="c"># 10 compiled regexes</span></pre></div>
+              </div>
+            </div></li>
+
+            <li><span class="num dim">3.3</span><div class="body">
+              <span class="what">Shortcuts: <code>--retag</code> or <code>--rehash</code>, then stop <span class="lines">lines 39–49</span></span>
+          <span class="detail">Updates every stored posting, then stops. The sample run skips this.</span>
+          <details class="src"><summary>Code · lines 39–49</summary><pre> 39      if args.retag:
+ 40          with db.connect() as conn:
+ 41              n = load.retag_all(conn, tagger)
+ 42          print(f"Re-tagged {n} postings with themes.yaml")
+ 43          return 0
+ 44  
+ 45      if args.rehash:
+ 46          with db.connect() as conn:
+ 47              n = load.rehash_all(conn)
+ 48          print(f"Recomputed job_hash for {n} postings")
+ 49          return 0</pre><p class="notes">These update every stored posting and <code>return 0</code>. Nothing is scraped and nothing is logged. The sample run has neither option, so it skips this step.</p></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>connect</b><i>core/db.py</i></span><span class="tbl fn"><b>retag_all</b><i>load.py → ThemeTagger.tag</i></span><span class="tbl fn"><b>rehash_all</b><i>load.py → content_hash</i></span></div>
+              <div class="io">
+                <div><span class="h">Input</span><pre>... run --retag</pre></div>
+                <div><span class="h">Output</span><pre>jobs.postings.themes recomputed for every row
+Re-tagged 2002 postings with themes.yaml</pre></div>
+              </div>
+            </div></li>
+
+            <li><span class="num">3.4</span><div class="body">
+              <span class="what">Work out this run's parameters <span class="lines">lines 51–53</span></span>
+          <span class="detail">A command-line option wins over <code>config.yaml</code>.</span>
+          <details class="src"><summary>Code · lines 51–53</summary><pre> 51      searches = [s.strip() for s in args.searches.split(",")] if args.searches else cfg["searches"]
+ 52      limit = args.limit or cfg["limit_per_search"]
+ 53      params = {"searches": searches, "limit_per_search": limit,"location": cfg["location"], "date_posted": cfg["date_posted"]}</pre><p class="notes">A command-line option wins over <code>config.yaml</code>. <code>args.limit or cfg[...]</code> uses the config value when <code>args.limit</code> is <code>None</code>.</p></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>main</b><i>run.py</i></span></div>
+              <div class="io">
+                <div><span class="h">Input</span><pre>args.searches = None, args.limit = None
+cfg (from 3.2)</pre></div>
+                <div><span class="h">Output</span><pre>searches = ["data scientist", "data analyst"]
+limit    = 1000
+params   = {"searches": [...], "limit_per_search": 1000,
+            "location": "United States",
+            "date_posted": "pastMonth"}</pre></div>
+              </div>
+            </div></li>
+
+            <li><span class="num">3.5</span><div class="body">
+              <span class="what">Connect, and open a run in the log <span class="lines">lines 55–58</span></span>
+          <span class="detail"><code>start_run</code> commits right away, so the run is logged even if it crashes.</span>
+          <details class="src"><summary>Code · lines 55–58</summary><pre> 55      apify = scrape.client()
+ 56      with db.connect() as conn:
+ 57          run_id = runlog.start_run(conn, PROJECT, params)
+ 58          batches, errors, cost = {}, [], 0.0</pre><p class="notes"><code>start_run</code> commits right away, so the row exists even if the run crashes later.</p></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>client</b><i>scrape.py → settings.get</i></span><span class="tbl fn"><b>connect</b><i>core/db.py → settings.get</i></span><span class="tbl fn"><b>start_run</b><i>core/runlog.py</i></span></div>
+              <div class="io">
+                <div><span class="h">Input</span><pre>APIFY_TOKEN, SUPABASE_DB_URL
+params (from 3.4)</pre></div>
+                <div><span class="h">Output</span><pre>core.run_log
+run_id | status  | params
+1      | running | {"searches": [...], ...}
+
+run_id = 1
+batches, errors, cost = {}, [], 0.0</pre></div>
+              </div>
+            </div></li>
+
+            <li><span class="num">3.6</span><div class="body">
+              <span class="what">Scrape each search term <span class="lines">lines 61–70</span></span>
+          <span class="detail">One Apify actor run per term. A failed term doesn't stop the others.</span>
+          <details class="src"><summary>Code · lines 61–70</summary><pre> 61              for term in searches:
+ 62                  print(f"Scraping '{term}' (up to {limit})...", flush=True)
+ 63                  try:
+ 64                      items, c = scrape.run_search(apify, cfg, term, limit)
+ 65                      batches[term] = items
+ 66                      cost += c
+ 67                      print(f"  {len(items)} jobs, ${c:.2f}", flush=True)
+ 68                  except Exception as e:
+ 69                      errors.append(f"{term}: {e}")
+ 70                      print(f"  FAILED: {e}", file=sys.stderr, flush=True)</pre><p class="notes">One Apify actor run per term, with a <code>try</code> around each, so one failed term is added to <code>errors</code> and the next term still runs.</p></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>run_search</b><i>scrape.py</i></span><span class="tbl fn"><b>build_input</b><i>scrape.py</i></span><span class="tbl fn"><b>actor().call, dataset().iterate_items</b><i>apify_client</i></span></div>
+              <div class="io">
+                <div><span class="h">Input</span><pre>term = "data scientist", limit = 1000
+→ {"keywords": "data scientist",
+   "location": "United States",
+   "datePosted": "pastMonth",
+   "limitPerSource": 1000, ...}</pre></div>
+                <div><span class="h">Output</span><pre>batches = {
+  "data scientist": [{"id": "4012", "title": "Senior Data Analyst",
+                      "companyName": "Acme",
+                      "salaryInfo": ["$120,000.00/yr", "$150,000.00/yr"],
+                      "jobPosterName": "…", ...},
+                     {"id": "3950", "title": "Data Scientist", ...}],
+  "data analyst":   [{"id": "4012", ...},
+                     {"id": "3987", "title": "Analytics Engineer", ...}]}
+cost = 0.06</pre></div>
+              </div>
+            </div></li>
+
+            <li><span class="num">3.7</span><div class="body">
+              <span class="what">Transform: merge, then one clean row per job <span class="lines">lines 73–74</span></span>
+          <span class="detail">Keeps each job once, drops personal fields and builds one clean row per job.</span>
+          <details class="src"><summary>Code · lines 73–74</summary><pre> 73              merged = merge_items(batches)
+ 74              rows = [to_row(item, terms, tagger) for item, terms in merged.values()]</pre><p class="notes"><code>merge_items</code> keeps 4012 once and records both terms that found it, and drops the poster's personal fields. <code>to_row</code> maps fields, parses the salary, computes both hashes and tags themes.</p></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>merge_items</b><i>transform.py</i></span><span class="tbl fn"><b>strip_personal</b><i>transform.py</i></span><span class="tbl fn"><b>to_row</b><i>transform.py</i></span><span class="tbl fn"><b>parse_salary, workplace, _int, _date</b><i>transform.py</i></span><span class="tbl fn"><b>content_hash</b><i>core/text.py</i></span><span class="tbl fn"><b>ThemeTagger.tag</b><i>core/text.py</i></span></div>
+              <div class="io">
+                <div><span class="h">Input → merged</span><pre>merged = {
+  "4012": (item, ["data scientist", "data analyst"]),
+  "3950": (item, ["data scientist"]),
+  "3987": (item, ["data analyst"])}
+<span class="c"># 4 items in, 3 jobs out; jobPoster* removed</span></pre></div>
+                <div><span class="h">Output → rows[0]</span><pre>{"job_id": "4012", "title": "Senior Data Analyst",
+ "company_name": "Acme",
+ "salary_min": 120000.0, "salary_max": 150000.0,
+ "salary_period": "yr",
+ "content_hash": "9f2c…", "job_hash": "51ab…",
+ "themes": ["SQL & data pipelines", ...],
+ "search_terms": ["data analyst", "data scientist"], ...}</pre></div>
+              </div>
+            </div></li>
+
+            <li><span class="num">3.8</span><div class="body">
+              <span class="what">Load: raw copy, then the upsert, in one transaction <span class="lines">lines 77–79</span></span>
+          <span class="detail">Saves the raw JSON, then inserts new jobs and updates ones seen before.</span>
+          <details class="src"><summary>Code · lines 77–79</summary><pre> 77              load.insert_raw(conn, run_id, merged)
+ 78              new = load.upsert_postings(conn, run_id, rows, date.today())
+ 79              conn.commit()</pre><p class="notes">The raw JSON is kept so the clean table can be rebuilt without scraping again. The upsert inserts new jobs and updates jobs seen before. <code>new</code> counts only the inserts.</p></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>insert_raw</b><i>load.py</i></span><span class="tbl fn"><b>upsert_postings</b><i>load.py</i></span><span class="tbl fn"><b>Jsonb, executemany, commit</b><i>psycopg</i></span></div>
+              <div class="io">
+                <div><span class="h">Output · jobs.raw_postings</span><pre>run_id | job_id | search_terms                    | payload
+1      | 4012   | {data analyst,data scientist}  | {...}
+1      | 3950   | {data scientist}               | {...}
+1      | 3987   | {data analyst}                 | {...}</pre></div>
+                <div><span class="h">Output · jobs.postings</span><pre>job_id | first_seen_at | times_seen | other_skills
+4012   | 2026-10-15    | 1          | NULL
+3950   | 2026-10-15    | 1          | NULL
+3987   | 2026-10-15    | 1          | NULL
+new = 3</pre></div>
+              </div>
+            </div></li>
+
+            <li><span class="num">3.9</span><div class="body">
+              <span class="what">Log the outcome and return an exit code <span class="lines">lines 82–94</span></span>
+          <span class="detail">Records the status and returns 0, or 1 if every term failed.</span>
+          <details class="src"><summary>Code · lines 82–94</summary><pre> 82              if not errors:
+ 83                  status = "succeeded"
+ 84              elif batches:
+ 85                  status = "succeeded_with_errors"
+ 86              else:
+ 87                  status = "failed"
+ 88              runlog.finish_run(conn, run_id, status=status, rows_fetched=len(rows), rows_new=new,
+ 89                                cost_usd=cost, error="\n".join(errors) or None)
+ 90              print(f"Run {run_id}: {len(rows)} jobs, {new} new, ${cost:.2f}. Status: {status}")
+ 91              return 0 if status != "failed" else 1
+ 92          except Exception as e:
+ 93              runlog.finish_run(conn, run_id, status="failed", cost_usd=cost, error=f"{type(e).__name__}: {e}")
+ 94              raise</pre><p class="notes">The status depends on the errors: none means <code>succeeded</code>, some failed terms mean <code>succeeded_with_errors</code>, and every term failing means <code>failed</code>. If anything raises an error, the <code>except</code> logs <code>failed</code> with the error and re-raises it, so the run still shows red.</p></details>
+              <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>finish_run</b><i>core/runlog.py</i></span><span class="tbl fn"><b>exit</b><i>sys</i></span></div>
+              <div class="io">
+                <div><span class="h">Input</span><pre>errors = [], batches has 2 terms
+len(rows) = 3, new = 3, cost = 0.06</pre></div>
+                <div><span class="h">Output</span><pre>core.run_log
+run_id | status    | rows_fetched | rows_new | cost_usd
+1      | succeeded | 3            | 3        | 0.0600
+
+Run 1: 3 jobs, 3 new, $0.06. Status: succeeded
+exit code 0</pre></div>
+              </div>
+            </div></li>
+          </ol>
         </div></li>
       </ol>
+      <p class="note">Next, the LLM module reads these rows back: <code>skill_discover.py</code> drafts <code>skills.yaml</code>, then <code>skill_tag.py</code> fills <code>other_skills</code> and <code>jobs.posting_skills</code>. See the <a href="#llm">LLM skills</a> and <a href="#sample">Sample Run</a> tabs.</p>
     </section>
 
     <section>
@@ -420,7 +694,7 @@ svg .ah-cool { fill: var(--cool); }
       </div>
       <figure>
         <div class="scroll">
-          <svg viewBox="0 0 1040 400" role="img" aria-label="jobs.raw_postings and jobs.postings reference core.run_log by run_id. jobs.postings feeds the view postings_dedup, which feeds posting_themes, monthly_summary, industry_mix and theme_coverage. theme_coverage and the my_skills table feed skill_gap. Planned for Module 12: jobs.skills and jobs.posting_skills feed role_skills.">
+          <svg viewBox="0 0 1040 400" role="img" aria-label="jobs.raw_postings and jobs.postings reference core.run_log by run_id. jobs.postings feeds the view postings_dedup, which feeds posting_themes, monthly_summary, industry_mix and theme_coverage. theme_coverage and the my_skills table feed skill_gap. Module 12 (040): jobs.skills and jobs.posting_skills, with postings_dedup, feed role_skills.">
             <defs>
               <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
               <marker id="d1c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-cool" d="M0,0 L10,5 L0,10 z"/></marker>
@@ -441,7 +715,7 @@ svg .ah-cool { fill: var(--cool); }
 
             <rect class="box-accent" x="20" y="200" width="190" height="50" rx="5"/>
             <text class="t-mono" x="32" y="221">jobs.postings</text>
-            <text class="t-sub" x="32" y="238">010 · one row per job ID</text>
+            <text class="t-sub" x="32" y="238">010 · one per job ID · + other_skills</text>
             <path class="flow-dash" d="M210,214 C250,214 250,62 214,62" marker-end="url(#d1)"/>
             <text class="t-arrow" x="250" y="140">first/last_run_id</text>
 
@@ -478,17 +752,20 @@ svg .ah-cool { fill: var(--cool); }
             <text class="t-mono" x="842" y="238">skill_gap</text>
             <text class="t-sub" x="842" y="252">market share × (5 − your level)</text>
 
-            <rect class="box-dim" x="290" y="330" width="200" height="50" rx="5"/>
-            <text class="t-mono" x="302" y="350">jobs.skills</text>
-            <text class="t-mono" x="302" y="368">jobs.posting_skills</text>
-            <line class="flow-dash" x1="490" y1="355" x2="566" y2="355" marker-end="url(#d1)"/>
-            <path class="flow-dash" d="M390,250 L390,276 C390,300 540,300 560,338 L566,345" marker-end="url(#d1)"/>
-            <rect class="box-dim" x="570" y="335" width="200" height="40" rx="5"/>
-            <text class="t-mono" x="582" y="353">role_skills</text>
-            <text class="t-sub" x="582" y="367">040 · to build (Module 12)</text>
+            <text class="t-head" x="290" y="328">TABLES · 040</text>
+            <rect class="box" x="290" y="336" width="200" height="50" rx="5"/>
+            <text class="t-mono" x="302" y="356">jobs.skills</text>
+            <text class="t-mono" x="302" y="374">jobs.posting_skills</text>
+            <path class="flow-dash" d="M290,370 L250,370 C228,370 232,256 214,250" marker-end="url(#d1)"/>
+            <text class="t-arrow" x="226" y="388">job_id</text>
+            <line class="flow-cool" x1="490" y1="361" x2="566" y2="361" marker-end="url(#d1c)"/>
+            <path class="flow-cool" d="M390,250 L390,276 C390,300 540,300 560,344 L566,351" marker-end="url(#d1c)"/>
+            <rect class="box-cool" x="570" y="341" width="200" height="40" rx="5"/>
+            <text class="t-mono" x="582" y="359">role_skills</text>
+            <text class="t-sub" x="582" y="373">040 · skills per role + category</text>
           </svg>
         </div>
-        <figcaption><code>010</code> runs <code>drop view jobs.postings_dedup cascade</code> on every migration. Because of <code>cascade</code>, every view built on it is dropped too, so later files must recreate theirs. That's why <code>040_skills.sql</code> recreates <code>role_skills</code> each time. It's also why the guide adds the new <code>other_skills</code> column in <code>010</code> rather than in <code>040</code>.</figcaption>
+        <figcaption><code>010</code> runs <code>drop view jobs.postings_dedup cascade</code> on every migration. Because of <code>cascade</code>, every view built on it is dropped too, so later files must recreate theirs. That's why <code>040_skills.sql</code> recreates <code>role_skills</code> each time. It's also why <code>other_skills</code> is added in <code>010</code>, before the views are rebuilt, rather than in <code>040</code>. The dashed <code>job_id</code> line is <code>posting_skills</code>' foreign key to <code>jobs.postings</code>.</figcaption>
       </figure>
     </section>
 
@@ -501,11 +778,41 @@ svg .ah-cool { fill: var(--cool); }
           <thead><tr><th>File</th><th>Creates</th><th>Status</th></tr></thead>
           <tbody>
             <tr><td><code>001_core.sql</code></td><td><code>core</code> schema, <code>core.run_log</code></td><td><span class="pill ok">applied</span></td></tr>
-            <tr><td><code>010_linkedin_jobs.sql</code></td><td><code>jobs</code> schema, <code>raw_postings</code>, <code>postings</code>, indexes, <code>postings_dedup</code>, <code>posting_themes</code></td><td><span class="pill ok">applied</span></td></tr>
+            <tr><td><code>010_linkedin_jobs.sql</code></td><td><code>jobs</code> schema, <code>raw_postings</code>, <code>postings</code>, indexes, <code>postings_dedup</code>, <code>posting_themes</code>. Now also adds the <code>other_skills</code> column.</td><td><span class="pill ok">applied</span> <span class="pill warn">re-apply</span></td></tr>
             <tr><td><code>020_analysis.sql</code></td><td><code>my_skills</code>, <code>monthly_summary</code>, <code>industry_mix</code>, <code>theme_coverage</code>, <code>skill_gap</code></td><td><span class="pill ok">applied</span></td></tr>
-            <tr><td><code>040_skills.sql</code></td><td><code>jobs.skills</code>, <code>jobs.posting_skills</code>, <code>role_skills</code> view, plus <code>other_skills</code> column added in 010</td><td><span class="pill info">guide 12.3 · to build</span></td></tr>
+            <tr><td><code>040_skills.sql</code></td><td><code>jobs.skills</code>, <code>jobs.posting_skills</code>, index on <code>skill</code>, <code>role_skills</code> view</td><td><span class="pill warn">written · apply</span></td></tr>
           </tbody>
         </table>
+      </div>
+      <p class="note">Apply both changes with <code>uv run python -m core.db</code>, or push the <code>sql/</code> changes to main and the "Set up database" workflow applies them. Re-running is safe: tables use <code>if not exists</code>, and views are rebuilt.</p>
+    </section>
+
+    <section>
+      <div class="intro">
+        <h2>What Module 12 adds to the database</h2>
+        <p>Three objects in <code>040_skills.sql</code> and one column in <code>010</code>. <code>jobs.skills</code> is the dimension (one row per skill, holding its category) and <code>jobs.posting_skills</code> is the fact table (one row per posting per skill).</p>
+      </div>
+      <div class="objs">
+        <div class="obj" style="--c:var(--accent)">
+          <span class="k">010 · alter table</span><b>jobs.postings.other_skills</b>
+          <ul><li><code>text[]</code>: skills found outside your list</li><li><code>NULL</code> = not tagged yet; <code>{}</code> = tagged, nothing new</li></ul>
+          <p>Written by the tagging loop in <code>skill_tag.py</code>.</p>
+        </div>
+        <div class="obj">
+          <span class="k">040 · table</span><b>jobs.skills</b>
+          <ul><li><code>skill</code> primary key</li><li><code>category</code>, checked against the four allowed values</li><li><code>definition</code></li></ul>
+          <p>Written by <code>sync_skills</code>, copied from <code>skills.yaml</code>.</p>
+        </div>
+        <div class="obj">
+          <span class="k">040 · table</span><b>jobs.posting_skills</b>
+          <ul><li><code>job_id</code> → <code>jobs.postings</code></li><li><code>skill</code> → <code>jobs.skills</code></li><li><code>level</code>: <code>required</code> or <code>preferred</code></li><li>primary key <code>(job_id, skill)</code></li></ul>
+          <p>Written by the tagging loop: delete, then insert, per posting.</p>
+        </div>
+        <div class="obj">
+          <span class="k">040 · view</span><b>jobs.role_skills</b>
+          <ul><li><code>postings_dedup</code> ⋈ <code>posting_skills</code> ⋈ <code>skills</code></li><li>one row per role per skill, with its category</li></ul>
+          <p>Recreated on every migration, because <code>010</code> drops it with <code>cascade</code>.</p>
+        </div>
       </div>
     </section>
   </div>
@@ -574,11 +881,11 @@ svg .ah-cool { fill: var(--cool); }
             <path class="flow-warm" d="M965,108 L965,228 L85,228 L85,262" marker-end="url(#l1w)"/>
             <text class="t-arrow" x="600" y="222">save as skills.yaml</text>
 
-            <text class="t-head" x="20" y="252">PASS 2 · TAG · skill_tag.py · to build</text>
+            <text class="t-head" x="20" y="252">PASS 2 · TAG · skill_tag.py · written</text>
 
             <rect class="box-dim" x="20" y="266" width="130" height="48" rx="5"/>
             <text class="t-mono" x="32" y="286">skills.yaml</text>
-            <text class="t-sub" x="32" y="302">fixed list</text>
+            <text class="t-sub" x="32" y="302">not saved yet</text>
             <rect class="box" x="20" y="330" width="130" height="48" rx="5"/>
             <text class="t-mono" x="32" y="350">jobs.postings</text>
             <text class="t-sub" x="32" y="366">other_skills is null</text>
@@ -599,19 +906,19 @@ svg .ah-cool { fill: var(--cool); }
             <line class="flow-warm" x1="380" y1="330" x2="436" y2="350" marker-end="url(#l1w)"/>
             <text class="t-arrow" x="408" y="356" text-anchor="middle">new</text>
 
-            <rect class="box-dim" x="440" y="270" width="180" height="40" rx="5"/>
+            <rect class="box" x="440" y="270" width="180" height="40" rx="5"/>
             <text class="t-mono" x="452" y="288">jobs.posting_skills</text>
             <text class="t-sub" x="452" y="302">job × skill × level</text>
-            <rect class="box-dim" x="440" y="330" width="180" height="40" rx="5"/>
+            <rect class="box" x="440" y="330" width="180" height="40" rx="5"/>
             <text class="t-mono" x="452" y="348">postings.other_skills</text>
             <text class="t-sub" x="452" y="362">NULL = not tagged yet</text>
-            <rect class="box-dim" x="440" y="400" width="180" height="40" rx="5"/>
+            <rect class="box" x="440" y="400" width="180" height="40" rx="5"/>
             <text class="t-mono" x="452" y="418">jobs.skills</text>
             <text class="t-sub" x="452" y="432">category stored once</text>
 
-            <line class="flow-dash" x1="620" y1="290" x2="676" y2="290" marker-end="url(#l1)"/>
-            <path class="flow-dash" d="M620,420 C652,420 650,300 676,300" marker-end="url(#l1)"/>
-            <rect class="box-dim" x="680" y="270" width="160" height="40" rx="5"/>
+            <line class="flow-cool" x1="620" y1="290" x2="676" y2="290" marker-end="url(#l1c)"/>
+            <path class="flow-cool" d="M620,420 C652,420 650,300 676,300" marker-end="url(#l1c)"/>
+            <rect class="box-cool" x="680" y="270" width="160" height="40" rx="5"/>
             <text class="t-mono" x="692" y="288">role_skills</text>
             <text class="t-sub" x="692" y="302">view, reposts collapsed</text>
             <line class="flow-dash" x1="620" y1="350" x2="676" y2="350" marker-end="url(#l1)"/>
@@ -628,66 +935,401 @@ svg .ah-cool { fill: var(--cool); }
             <text class="t-sub" x="892" y="360">12.8 · needs Mod 11</text>
           </svg>
         </div>
-        <figcaption>Everything in the orange boxes is already in <code>core/skills.py</code>. What's missing is the Pass 2 script, the <code>040</code> tables and your reviewed <code>skills.yaml</code>. After Pass 2, the emerging-skills list closes the loop: add the real new skills to <code>skills.yaml</code>, then re-tag (guide 12.10).</figcaption>
+        <figcaption>Everything in the orange boxes is already in <code>core/skills.py</code>. Both scripts and the <code>040</code> tables are written. What's missing is your reviewed <code>skills.yaml</code>, and applying the SQL. After Pass 2, the emerging-skills list closes the loop: add the real new skills to <code>skills.yaml</code>, then re-tag (guide 12.10).</figcaption>
       </figure>
     </section>
 
     <section>
       <div class="intro">
-        <h2>Pass 1: <code>skill_discover.py</code>, in order</h2>
-        <p>Run it with <code>uv run python -m projects.linkedin_jobs.skill_discover --sample 20</code> first (a few cents), then without <code>--sample</code> for the full 500 (about $0.15).</p>
+        <h2>Pass 1: <code>skill_discover.py</code>, top to bottom</h2>
+        <p>Run it with <code>--sample 20</code> first (a few cents), then without options for 500 postings (about $0.15). Like <code>run.py</code>, steps 0 and 1 only load and define things, and the last two lines run <code>main</code>. The script has no other function of its own: the work is done by tools from <code>core/skills.py</code>.</p>
       </div>
       <ol class="road llm">
-        <li><span class="num">01</span><div class="body">
-          <span class="what">Sample postings</span>
-          <span class="detail">Picks random rows from <code>jobs.postings_dedup</code> (one row per role, so reposts don't skew the sample) that have a description.</span>
-          <div class="tables"><span class="tbl db">jobs.postings_dedup</span></div>
+        <li><span class="num">0</span><div class="body">
+          <span class="what">Load the file: imports and constants <span class="lines">lines 9–19</span></span>
+          <span class="detail">Loads the tools from <code>core/skills.py</code>, and <code>.env</code> is read here.</span>
+          <details class="src"><summary>Code · lines 9–19</summary><pre>  9  import argparse
+ 10  import sys
+ 11  from collections import Counter
+ 12  from pathlib import Path
+ 13  
+ 14  import yaml
+ 15  
+ 16  from core import db
+ 17  from core.skills import Claude, build_list, extract_open
+ 18  
+ 19  HERE = Path(__file__).parent</pre><p class="notes">Importing <code>core.db</code> runs <code>load_dotenv</code>, so <code>ANTHROPIC_API_KEY</code> is available. Importing <code>core.skills</code> also loads the <code>anthropic</code> package.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>argparse, sys, Counter, Path</b><i>standard library</i></span><span class="tbl fn"><b>yaml</b><i>pyyaml</i></span><span class="tbl fn"><b>db</b><i>core/db.py</i></span><span class="tbl fn"><b>load_dotenv</b><i>core/settings.py</i></span><span class="tbl fn"><b>Claude, build_list, extract_open</b><i>core/skills.py</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>.env
+ANTHROPIC_API_KEY=…
+SUPABASE_DB_URL=…</pre></div><div><span class="h">Output</span><pre>HERE = …/projects/linkedin_jobs</pre></div></div>
         </div></li>
-        <li><span class="num">02</span><div class="body">
-          <span class="what"><code>extract_open</code> on each posting</span>
-          <span class="detail">Sends the title and description, cut at 8,000 characters, with an open schema. Any skill name is allowed, but the category must be one of four. If a request fails, that posting is skipped and the loop goes on.</span>
+
+        <li><span class="num dim">1</span><div class="body">
+          <span class="what"><code>def main(argv=None) -&gt; int</code> <span class="defonly">defines only</span> <span class="lines">lines 21–88</span></span>
+          <span class="detail">The whole pass as one function that returns 0 or 1.</span>
+          <details class="src"><summary>Code · lines 21–88</summary><pre> 21  def main(argv: list[str] | None = None) -&gt; int:
+       …            <span class="c"># the body is in the sub-steps</span></pre><p class="notes">Defines the whole pass as one function that returns 0 or 1.</p></details>
         </div></li>
-        <li><span class="num">03</span><div class="body">
-          <span class="what">Count phrases with <code>Counter</code></span>
-          <span class="detail">The key is <code>(lowercased phrase, category)</code>. Phrases go into a <em>set</em> before counting, so a wordy posting counts each phrase once.</span>
+
+        <li><span class="num">2</span><div class="body">
+          <span class="what"><code>if __name__ == "__main__": sys.exit(main())</code> <span class="lines">lines 91–92</span></span>
+          <span class="detail">Runs <code>main()</code>. Everything below happens inside it.</span>
+          <details class="src"><summary>Code · lines 91–92</summary><pre> 91  if __name__ == "__main__":
+ 92      sys.exit(main())</pre><p class="notes">Runs <code>main</code> and passes its return value to the shell. Everything below happens inside <code>main</code>.</p></details>
+          <ol class="road llm sub">
+        <li><span class="num">2.1</span><div class="body">
+          <span class="what">Read the options <span class="lines">lines 22–25</span></span>
+          <span class="detail"><code>--sample</code> defaults to 500, and the draft is written next to the script.</span>
+          <details class="src"><summary>Code · lines 22–25</summary><pre> 22      ap = argparse.ArgumentParser(description='Discover skills from a sample of postings')
+ 23      ap.add_argument('--sample', type=int, default=500, help='number of postings to sample')
+ 24      ap.add_argument('--out', type=Path, default=HERE/"skills_draft.yaml", help='where to write the draft skill list')
+ 25      args = ap.parse_args(argv)</pre><p class="notes"><code>--sample</code> defaults to 500, and <code>--out</code> defaults to <code>skills_draft.yaml</code> next to the script. <code>type=Path</code> turns the text into a <code>Path</code> object.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>ArgumentParser, add_argument, parse_args</b><i>argparse</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>uv run python -m projects.linkedin_jobs.skill_discover --sample 20</pre></div><div><span class="h">Output</span><pre>args = Namespace(sample=20,
+                 out=Path('…/linkedin_jobs/skills_draft.yaml'))</pre></div></div>
         </div></li>
-        <li><span class="num">04</span><div class="body">
-          <span class="what"><code>build_list</code>: one bigger request</span>
-          <span class="detail">Sends the 400 most common phrases with their counts, at <code>effort="medium"</code>. Claude merges synonyms into 40 to 60 skills, each with a name, a category and a one-sentence definition.</span>
+        <li><span class="num">2.2</span><div class="body">
+          <span class="what">Create the <code>Claude</code> helper <span class="lines">line 27</span></span>
+          <span class="detail">One object for the whole run, so the token totals add up.</span>
+          <details class="src"><summary>Code · line 27</summary><pre> 27      claude = Claude()</pre><p class="notes">One object for the whole run, so its token totals add up across every request.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>Claude.__init__</b><i>core/skills.py</i></span><span class="tbl fn"><b>get(ANTHROPIC_API_KEY)</b><i>core/settings.py</i></span><span class="tbl fn"><b>Anthropic</b><i>anthropic</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>ANTHROPIC_API_KEY from .env
+MODEL = "claude-haiku-5-5"</pre></div><div><span class="h">Output</span><pre>claude.model         = "claude-haiku-5-5"
+claude.input_tokens  = 0
+claude.output_tokens = 0</pre></div></div>
         </div></li>
-        <li><span class="num">05</span><div class="body">
-          <span class="what">Write the draft, then you edit it</span>
-          <span class="detail">Writes <code>skills_draft.yaml</code>, sorted by category. You merge, split and sharpen it by hand, then save it as <code>skills.yaml</code>. The definitions matter: Pass 2 puts them in its prompt to decide what counts as each skill.</span>
-          <div class="tables"><span class="tbl file">skills_draft.yaml</span><span class="tbl todo">skills.yaml</span></div>
+        <li><span class="num">2.3</span><div class="body">
+          <span class="what">Sample postings <span class="lines">lines 28–38</span></span>
+          <span class="detail">A random sample of distinct roles that have a description.</span>
+          <details class="src"><summary>Code · lines 28–38</summary><pre> 28      with db.connect() as conn:
+ 29          rows = conn.execute(
+ 30              """
+ 31              select title, description_text from jobs.postings_dedup
+ 32               where description_text is not null
+ 33               order by random()
+ 34               limit %s
+ 35              """,
+ 36              (args.sample,),
+ 37          ).fetchall()
+ 38      print(f'Reading {len(rows)} postings with {claude.model}', flush=True)</pre><p class="notes"><code>postings_dedup</code> has one row per role, so reposts can't count twice. <code>order by random()</code> spreads the sample across the whole month. The connection closes when the <code>with</code> block ends, since nothing later needs the database.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>connect</b><i>core/db.py</i></span><span class="tbl fn"><b>execute, fetchall</b><i>psycopg</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>select title, description_text from jobs.postings_dedup
+ where description_text is not null
+ order by random() limit 500</pre></div><div><span class="h">Output</span><pre>rows = [("Senior Data Analyst", "About us: … write SQL daily, present to executives …"),
+        ("Data Scientist",      "We're hiring … Python, stakeholder management …"),
+        …]                                 <span class="c"># 500 tuples</span>
+Reading 500 postings with claude-haiku-5-5</pre></div></div>
+        </div></li>
+        <li><span class="num">2.4</span><div class="body">
+          <span class="what"><code>extract_open</code> on each posting <span class="lines">lines 42–48</span></span>
+          <span class="detail">Free-form skills for one posting. A failed request skips that posting.</span>
+          <details class="src"><summary>Code · lines 42–48</summary><pre> 42      for i, (title,description) in enumerate(rows,start=1):
+ 43          try:
+ 44              found = extract_open(claude,f"{title}\n\n{description}")
+ 45          except Exception as e:
+ 46              failed += 1
+ 47              print(f"  skipped one: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+ 48              continue</pre><p class="notes">The title goes in front of the description. A failed request is counted in <code>failed</code> and skipped with <code>continue</code>.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>extract_open</b><i>core/skills.py</i></span><span class="tbl fn"><b>OPEN_SCHEMA, IGNORE, CATEGORY_HELP</b><i>core/skills.py</i></span><span class="tbl fn"><b>Claude.ask</b><i>core/skills.py</i></span><span class="tbl fn"><b>messages.create</b><i>anthropic</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>"Senior Data Analyst\n\nAbout us: … write SQL daily,
+ present to executives …"   <span class="c"># cut at 8,000 chars</span></pre></div><div><span class="h">Output</span><pre>found = [{"name": "SQL queries", "category": "technical"},
+         {"name": "Presenting to executives", "category": "communication"},
+         {"name": "sql queries", "category": "technical"}]</pre></div></div>
+        </div></li>
+        <li><span class="num">2.5</span><div class="body">
+          <span class="what">Count each phrase once per posting <span class="lines">lines 50, 70–71</span></span>
+          <span class="detail">Each phrase is counted once per posting.</span>
+          <details class="src"><summary>Code · lines 50, 70–71</summary><pre> 50          counts.update({(" ".join(s["name"].lower().split()), s["category"]) for s in found})
+  ⋮
+ 70          if i % 50 == 0:
+ 71              print(f"  {i} read, ${claude.cost_usd:.3f} so far", flush=True)</pre><p class="notes">Each name is lowercased with extra spaces collapsed. The <em>set</em> collapses repeats within one posting before <code>Counter</code> adds 1. It prints progress every 50 postings.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>Counter.update</b><i>collections</i></span><span class="tbl fn"><b>cost_usd</b><i>core/skills.py</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>found (from 2.4), one posting at a time</pre></div><div><span class="h">Output</span><pre>counts = Counter({("sql", "technical"): 48,
+                 ("sql queries", "technical"): 21,
+                 ("stakeholder management", "business"): 19, …})
+  50 read, $0.014 so far</pre></div></div>
+        </div></li>
+        <li><span class="num dim">2.6</span><div class="body">
+          <span class="what">Stop if nothing was found <span class="lines">lines 73–75</span></span>
+          <span class="detail">If nothing was found, it exits with 1 and writes no file.</span>
+          <details class="src"><summary>Code · lines 73–75</summary><pre> 73      if not counts:
+ 74          print("No skills found, exiting", file=sys.stderr)
+ 75          return 1</pre><p class="notes">If every request failed (a bad key, for example), <code>counts</code> is empty. The script exits with 1 and doesn't call <code>build_list</code> or write a file.</p></details>
+        </div></li>
+        <li><span class="num">2.7</span><div class="body">
+          <span class="what"><code>build_list</code>: merge into one list <span class="lines">lines 77–79</span></span>
+          <span class="detail">One request merges the top 400 phrases into 40 to 60 skills.</span>
+          <details class="src"><summary>Code · lines 77–79</summary><pre> 77      print(f"{len(counts):,} distinct phrases. Grouping them into a list...", flush=True)
+ 78      skills = build_list(claude, counts)
+ 79      skills.sort(key=lambda s: (s["category"], s["skill"]))</pre><p class="notes">One request with the 400 most common phrases, at <code>effort="medium"</code> and <code>max_tokens=8000</code>. Then <code>sort</code> orders the list by category, then by name.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>build_list</b><i>core/skills.py</i></span><span class="tbl fn"><b>most_common</b><i>collections</i></span><span class="tbl fn"><b>LIST_SCHEMA</b><i>core/skills.py</i></span><span class="tbl fn"><b>Claude.ask</b><i>core/skills.py</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>count | category | phrase
+48 | technical | sql
+21 | technical | sql queries
+19 | business | stakeholder management
+…                     <span class="c"># 400 lines</span></pre></div><div><span class="h">Output</span><pre>skills = [{"skill": "SQL", "category": "technical",
+           "definition": "Writing queries to extract, join and transform data."},
+          {"skill": "Stakeholder management", "category": "communication",
+           "definition": "…"}, …]          <span class="c"># 40–60 skills</span></pre></div></div>
+        </div></li>
+        <li><span class="num">2.8</span><div class="body">
+          <span class="what">Write the draft <span class="lines">lines 81–88</span></span>
+          <span class="detail">Writes the draft, never <code>skills.yaml</code>.</span>
+          <details class="src"><summary>Code · lines 81–88</summary><pre> 81      header = (
+ 82          f"# Draft skill list from {len(rows) - failed} postings. Review it, then save as skills.yaml.\n"
+ 83          "# Rename, merge, split or delete freely; categories: technical, communication, business, leadership.\n\n"
+ 84      )
+ 85      args.out.write_text(header + yaml.safe_dump(skills, sort_keys=False, allow_unicode=True, width=100),
+ 86                          encoding="utf-8")
+ 87      print(f"Wrote {len(skills)} skills to {args.out.name}. Cost: ${claude.cost_usd:.3f}")
+ 88      return 0</pre><p class="notes"><code>sort_keys=False</code> keeps the order <code>skill, category, definition</code>. The header records how many postings were read. It writes the draft, never <code>skills.yaml</code>, so your edited list is never overwritten.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>safe_dump</b><i>yaml</i></span><span class="tbl fn"><b>write_text</b><i>pathlib</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>skills (from 2.7), failed = 2</pre></div><div><span class="h">Output</span><pre>skills_draft.yaml
+# Draft skill list from 498 postings. Review it, …
+- skill: SQL
+  category: technical
+  definition: Writing queries to extract, join and transform data.
+
+Wrote 52 skills to skills_draft.yaml. Cost: $0.142
+exit code 0</pre></div></div>
+        </div></li>
+          </ol>
+        </div></li>
+        <li><span class="num">3</span><div class="body">
+          <span class="what">You: review the draft and save it as <code>skills.yaml</code></span>
+          <span class="detail">Merge, split, recategorize and sharpen definitions. Keep the three keys.</span>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>a text editor</b><i>you</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>skills_draft.yaml   <span class="c"># 52 skills</span></pre></div><div><span class="h">Output</span><pre>skills.yaml
+- skill: SQL
+  category: technical
+  definition: Writing queries to extract, join and transform data.
+- skill: Presenting to leadership
+  category: communication
+  definition: Explaining results and recommendations to senior stakeholders.
+- skill: Mentoring
+  category: leadership
+  definition: Coaching and developing other analysts.</pre></div></div>
         </div></li>
       </ol>
     </section>
 
     <section>
       <div class="intro">
-        <h2>Pass 2: <code>skill_tag.py</code>, what it will do</h2>
-        <p>Guide section 12.6. You'll run it on every posting once, then monthly on new postings only.</p>
+        <h2>Pass 2: <code>skill_tag.py</code>, top to bottom</h2>
+        <p>Needs <code>skills.yaml</code> and the applied <code>040</code> tables. Try <code>--limit 10</code> first (about $0.005), then run it with no options. After that, each monthly run tags only the new postings. The sample is the first tagging run from the <a href="#sample">Sample Run</a> tab: three postings and three skills.</p>
       </div>
       <ol class="road llm">
-        <li><span class="num dim">01</span><div class="body">
-          <span class="what">Load <code>skills.yaml</code> into <code>SkillTagger</code></span>
-          <span class="detail">The constructor builds the system prompt (skills grouped by category, with definitions) and a <em>closed</em> schema in which <code>skill</code> must be one of your names.</span>
+        <li><span class="num">0</span><div class="body">
+          <span class="what">Load the file: imports and constants <span class="lines">lines 9–19</span></span>
+          <span class="detail">Loads <code>SkillTagger</code>, and <code>.env</code> is read here.</span>
+          <details class="src"><summary>Code · lines 9–19</summary><pre>  9  import argparse
+ 10  import sys
+ 11  from pathlib import Path
+ 12  
+ 13  import psycopg
+ 14  
+ 15  from core import db
+ 16  from core.skills import SkillTagger
+ 17  
+ 18  HERE = Path(__file__).parent
+ 19  MAX_FAILURES_IN_A_ROW = 5</pre><p class="notes"><code>MAX_FAILURES_IN_A_ROW</code> is the cut-off used in step 3.7. <code>psycopg</code> is imported only for the type hint on <code>sync_skills</code>.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>argparse, sys, Path</b><i>standard library</i></span><span class="tbl fn"><b>Connection</b><i>psycopg</i></span><span class="tbl fn"><b>db</b><i>core/db.py</i></span><span class="tbl fn"><b>load_dotenv</b><i>core/settings.py</i></span><span class="tbl fn"><b>SkillTagger</b><i>core/skills.py</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>.env
+ANTHROPIC_API_KEY=…
+SUPABASE_DB_URL=…</pre></div><div><span class="h">Output</span><pre>HERE = …/projects/linkedin_jobs
+MAX_FAILURES_IN_A_ROW = 5</pre></div></div>
         </div></li>
-        <li><span class="num dim">02</span><div class="body">
-          <span class="what"><code>sync_skills</code>: make <code>jobs.skills</code> match the YAML</span>
-          <span class="detail">Adds new skills, updates categories and definitions, and deletes skills you removed. Changing a category only touches this table, so no posting needs re-tagging.</span>
-          <div class="tables"><span class="tbl todo">jobs.skills</span></div>
+
+        <li><span class="num dim">1</span><div class="body">
+          <span class="what"><code>def sync_skills(conn, skills)</code> <span class="defonly">defines only</span> <span class="lines">lines 21–33</span></span>
+          <span class="detail">Makes <code>jobs.skills</code> match <code>skills.yaml</code>. Called in 3.4.</span>
+          <details class="src"><summary>Code · lines 21–33</summary><pre> 21  def sync_skills(conn:psycopg.Connection, skills: list[dict]) -&gt; None:
+ 22      """Sync the skills table with the provided list of skills."""
+ 23      names = [s['skill'] for s in skills]
+ 24      with conn.cursor() as cur:
+ 25          cur.executemany(
+ 26              """
+ 27              insert into jobs.skills (skill, category, definition) values (%(skill)s, %(category)s, %(definition)s)
+ 28              on conflict (skill) do update set category = excluded.category, definition = excluded.definition
+ 29              """,
+ 30              skills,
+ 31          )
+ 32      conn.execute("delete from jobs.posting_skills where skill &lt;&gt; all(%s)", (names,))
+ 33      conn.execute("delete from jobs.skills where skill &lt;&gt; all(%s)", (names,))</pre><p class="notes">Called in step 3.4. An upsert (<code>on conflict (skill) do update</code>) adds new skills and updates changed categories and definitions. Then <code>skill &lt;&gt; all(%s)</code> deletes skills no longer in the YAML, from <code>posting_skills</code> first because of the foreign key.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>cursor, executemany, execute</b><i>psycopg</i></span></div>
+          <div class="io"><div><span class="h">Input, a later run</span><pre>jobs.skills now          skills.yaml now
+SQL       · technical    SQL       · technical
+Mentoring · communic.    Mentoring · leadership
+Excel     · technical    (deleted)</pre></div><div><span class="h">Output</span><pre>SQL       · technical    <span class="c"># unchanged</span>
+Mentoring · leadership   <span class="c"># updated</span>
+Excel                    <span class="c"># removed, with its tags</span></pre></div></div>
         </div></li>
-        <li><span class="num dim">03</span><div class="body">
-          <span class="what">Pick untagged postings</span>
-          <span class="detail">Postings with <code>other_skills is null</code>, newest first. <code>--retag TEXT</code> and <code>--retag-all</code> set this column back to null so those postings get tagged again.</span>
+
+        <li><span class="num dim">2</span><div class="body">
+          <span class="what"><code>def main(argv=None) -&gt; int</code> <span class="defonly">defines only</span> <span class="lines">lines 35–98</span></span>
+          <span class="detail">The tagging run as one function that returns 0 or 1.</span>
+          <details class="src"><summary>Code · lines 35–98</summary><pre> 35  def main(argv: list[str] | None = None) -&gt; int:
+       …            <span class="c"># the body is in the sub-steps</span></pre><p class="notes">Defines the tagging run as one function that returns 0 or 1.</p></details>
         </div></li>
-        <li><span class="num dim">04</span><div class="body">
-          <span class="what">Tag each posting and write it</span>
-          <span class="detail"><code>tag()</code> returns <code>{skill: level}</code> plus up to 5 new phrases. For each posting the script deletes its old skill rows, inserts the new ones and stores <code>other_skills</code>, even when it's empty (<code>{}</code>). It commits every 50 postings and stops after 5 failures in a row.</span>
-          <div class="tables"><span class="tbl todo">jobs.posting_skills</span><span class="tbl todo">jobs.postings.other_skills</span></div>
+
+        <li><span class="num">3</span><div class="body">
+          <span class="what"><code>if __name__ == "__main__": sys.exit(main())</code> <span class="lines">lines 101–102</span></span>
+          <span class="detail">Runs <code>main()</code>. Everything below happens inside it.</span>
+          <details class="src"><summary>Code · lines 101–102</summary><pre>101  if __name__ == "__main__":
+102      sys.exit(main())</pre><p class="notes">Runs <code>main</code> and passes its return value to the shell. Everything below happens inside <code>main</code>.</p></details>
+          <ol class="road llm sub">
+        <li><span class="num">3.1</span><div class="body">
+          <span class="what">Read the options <span class="lines">lines 36–40</span></span>
+          <span class="detail">argparse turns <code>--retag-all</code> into <code>args.retag_all</code>.</span>
+          <details class="src"><summary>Code · lines 36–40</summary><pre> 36      ap = argparse.ArgumentParser(description='Tag postings with skills')
+ 37      ap.add_argument('--limit', type=int, help='number of postings to process')
+ 38      ap.add_argument('--retag', metavar='WORD', help='re-tag postings mentioning a word')
+ 39      ap.add_argument('--retag-all', action='store_true', help='re-tag every posting')
+ 40      args = ap.parse_args(argv)</pre><p class="notes">argparse turns <code>--retag-all</code> into <code>args.retag_all</code>, swapping the dash for an underscore.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>ArgumentParser, add_argument, parse_args</b><i>argparse</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>uv run python -m projects.linkedin_jobs.skill_tag --limit 10</pre></div><div><span class="h">Output</span><pre>args = Namespace(limit=10, retag=None, retag_all=False)</pre></div></div>
+        </div></li>
+        <li><span class="num dim">3.2</span><div class="body">
+          <span class="what">Check that <code>skills.yaml</code> exists <span class="lines">lines 42–46</span></span>
+          <span class="detail">With no list, it exits with 1 before any database or API work.</span>
+          <details class="src"><summary>Code · lines 42–46</summary><pre> 42      path = HERE/'skills.yaml'
+ 43      if not path.exists():
+ 44          print("No skills.yaml yet. Run skill_discover, review skills_draft.yaml, then save it as skills.yaml.",
+ 45                file=sys.stderr)
+ 46          return 1</pre><p class="notes">If it doesn't, the script prints how to make it and exits with 1, before any database or API work.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>Path.exists</b><i>pathlib</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>HERE / "skills.yaml"</pre></div><div><span class="h">Output</span><pre>missing → No skills.yaml yet. Run skill_discover, …
+          exit code 1
+found   → carry on</pre></div></div>
+        </div></li>
+        <li><span class="num">3.3</span><div class="body">
+          <span class="what">Build the tagger <span class="lines">line 47</span></span>
+          <span class="detail">Builds the prompt, the closed schema and a Claude client.</span>
+          <details class="src"><summary>Code · line 47</summary><pre> 47      tagger = SkillTagger.from_yaml(path)</pre><p class="notes"><code>from_yaml</code> reads the file and calls <code>__init__</code>. That builds <code>self.names</code>, the system prompt grouped by category (<code>by_category</code>), the closed schema, and a <code>Claude()</code>.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>SkillTagger.from_yaml</b><i>core/skills.py</i></span><span class="tbl fn"><b>safe_load</b><i>yaml</i></span><span class="tbl fn"><b>SkillTagger.__init__</b><i>core/skills.py</i></span><span class="tbl fn"><b>Claude()</b><i>core/skills.py → settings.get</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>skills.yaml   <span class="c"># 3 skills (Pass 1, step 3)</span></pre></div><div><span class="h">Output</span><pre>tagger.names  = ["SQL", "Presenting to leadership", "Mentoring"]
+tagger.system = "… Technical:\n- SQL: Writing queries …
+                 \n\nCommunication:\n- Presenting …"
+tagger.schema → "skill": {"enum": tagger.names}</pre></div></div>
+        </div></li>
+        <li><span class="num">3.4</span><div class="body">
+          <span class="what"><code>sync_skills</code>: copy the list into the database <span class="lines">lines 49–50</span></span>
+          <span class="detail">Opens the connection and copies the skill list into the database.</span>
+          <details class="src"><summary>Code · lines 49–50</summary><pre> 49      with db.connect() as conn:
+ 50          sync_skills(conn,tagger.skills)</pre><p class="notes">Opens the connection used for the rest of the run, then calls step 1's function.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>connect</b><i>core/db.py</i></span><span class="tbl fn"><b>sync_skills</b><i>skill_tag.py</i></span><span class="tbl fn"><b>executemany</b><i>psycopg</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>tagger.skills   <span class="c"># the 3 dicts from skills.yaml</span>
+jobs.skills     <span class="c"># empty on the first run</span></pre></div><div><span class="h">Output</span><pre>jobs.skills
+skill                    | category
+SQL                      | technical
+Presenting to leadership | communication
+Mentoring                | leadership</pre></div></div>
+        </div></li>
+        <li><span class="num">3.5</span><div class="body">
+          <span class="what">Optionally mark postings for re-tagging, then commit <span class="lines">lines 51–56</span></span>
+          <span class="detail"><code>--retag</code> and <code>--retag-all</code> put postings back in the queue.</span>
+          <details class="src"><summary>Code · lines 51–56</summary><pre> 51          if args.retag_all:
+ 52              conn.execute("update jobs.postings set other_skills = null")
+ 53          elif args.retag:
+ 54              conn.execute("update jobs.postings set other_skills = null where description_text ilike %s",
+ 55                          (f"%{args.retag}%",))
+ 56          conn.commit() </pre><p class="notes"><code>--retag-all</code> sets <code>other_skills</code> back to <code>NULL</code> on every posting, and <code>--retag WORD</code> only where the description mentions the word. The first run has neither. The commit also saves step 3.4.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>execute, commit</b><i>psycopg</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>… skill_tag --retag dbt</pre></div><div><span class="h">Output</span><pre>update jobs.postings set other_skills = null
+ where description_text ilike '%dbt%'
+<span class="c"># those postings go back in the queue</span></pre></div></div>
+        </div></li>
+        <li><span class="num">3.6</span><div class="body">
+          <span class="what">Pick the postings to tag <span class="lines">lines 58–67</span></span>
+          <span class="detail">Untagged postings (<code>other_skills is null</code>), newest first.</span>
+          <details class="src"><summary>Code · lines 58–67</summary><pre> 58          rows = conn.execute(
+ 59              """
+ 60               select job_id, title, description_text from jobs.postings
+ 61               where other_skills is null and description_text is not null
+ 62               order by first_seen_at desc
+ 63               limit %s
+ 64              """,
+ 65              (args.limit,),
+ 66          ).fetchall()
+ 67          print(f"{len(rows)} postings to tag against {len(tagger.names)} skills with {tagger.claude.model}",flush=True)</pre><p class="notes"><code>other_skills is null</code> means "not tagged yet". Newest first. <code>limit NULL</code> means no limit.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>execute, fetchall</b><i>psycopg</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>jobs.postings
+job_id | other_skills
+4012   | NULL
+3950   | NULL
+3987   | NULL</pre></div><div><span class="h">Output</span><pre>rows = [("4012", "Senior Data Analyst", "…"),
+        ("3950", "Data Scientist", "…"),
+        ("3987", "Analytics Engineer", "…")]
+3 postings to tag against 3 skills with claude-haiku-5-5</pre></div></div>
+        </div></li>
+        <li><span class="num">3.7</span><div class="body">
+          <span class="what">Tag one posting <span class="lines">lines 69–81</span></span>
+          <span class="detail">One request per posting. A failure skips the posting, and 5 in a row stop the run.</span>
+          <details class="src"><summary>Code · lines 69–81</summary><pre> 69          done, failed, in_a_row = 0, 0, 0
+ 70          for job_id, title, description in rows:
+ 71              try:
+ 72                  found, other = tagger.tag(f"{title}\n\n{description}")
+ 73              except Exception as e:
+ 74                  failed += 1
+ 75                  in_a_row += 1
+ 76                  print(f"Failed to tag {job_id}: {e}", file=sys.stderr, flush=True)
+ 77                  if in_a_row &gt;= MAX_FAILURES_IN_A_ROW:
+ 78                      print("Stopping after too many consecutive failures.", file=sys.stderr, flush=True)
+ 79                      break # goes to the first line after the for loop, stopping tagging altogether  
+ 80                  continue # goes to the top of the for loop, with the next posting, skips this posting, keeps going
+ 81              in_a_row = 0</pre><p class="notes"><code>tag()</code> sends one request and cleans the reply: <code>required</code> beats <code>preferred</code>, and other phrases are lowercased, deduplicated and capped at 5. On an error, <code>continue</code> skips the posting, and 5 failures in a row <code>break</code> the loop. A success resets <code>in_a_row</code>.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>SkillTagger.tag</b><i>core/skills.py</i></span><span class="tbl fn"><b>Claude.ask</b><i>core/skills.py</i></span><span class="tbl fn"><b>messages.create</b><i>anthropic</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>"Senior Data Analyst\n\nAbout us: … write SQL daily,
+ present to executives a plus …"</pre></div><div><span class="h">Output</span><pre>found = {"SQL": "required",
+         "Presenting to leadership": "preferred"}
+other = ["causal ml"]</pre></div></div>
+        </div></li>
+        <li><span class="num">3.8</span><div class="body">
+          <span class="what">Write the posting's results <span class="lines">lines 82–89</span></span>
+          <span class="detail">Replaces the posting's tags and marks it as done.</span>
+          <details class="src"><summary>Code · lines 82–89</summary><pre> 82              conn.execute("delete from jobs.posting_skills where job_id = %s", (job_id,))
+ 83              with conn.cursor() as cur:
+ 84                  cur.executemany(
+ 85                      "insert into jobs.posting_skills (job_id, skill, level) values (%s, %s, %s)",
+ 86                      [(job_id, skill, level) for skill, level in found.items()],
+ 87                  )
+ 88              conn.execute("update jobs.postings set other_skills = %s where job_id = %s", (other, job_id))
+ 89              done += 1</pre><p class="notes">Delete the posting's old tags, insert one row per skill in <code>found</code>, and store <code>other</code>. A stored <code>{}</code> or <code>{…}</code> marks the posting as done.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>execute, executemany, cursor</b><i>psycopg</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>job_id = "4012", found, other (from 3.7)</pre></div><div><span class="h">Output</span><pre>jobs.posting_skills
+4012 | SQL                      | required
+4012 | Presenting to leadership | preferred
+
+jobs.postings: 4012 other_skills → {causal ml}
+done = 1</pre></div></div>
+        </div></li>
+        <li><span class="num">3.9</span><div class="body">
+          <span class="what">Save and report <span class="lines">lines 90–98</span></span>
+          <span class="detail">Commits every 50 postings and at the end, then prints the cost.</span>
+          <details class="src"><summary>Code · lines 90–98</summary><pre> 90              if done % 50 == 0:
+ 91                  conn.commit()
+ 92                  print(f"  {done} tagged, ${tagger.claude.cost_usd:.3f} so far", flush=True)
+ 93          conn.commit()
+ 94          
+ 95      c = tagger.claude
+ 96      print(f"Tagged {done}, failed {failed}. Tokens: {c.input_tokens:,} in, {c.output_tokens:,} out. "
+ 97            f"Cost: ${c.cost_usd:.3f}")
+ 98      return 1 if failed and not done else 0</pre><p class="notes">Commits every 50 postings, so a crash keeps the work so far, and once more after the loop. Prints the token totals and cost. The exit code is 1 only if every posting failed.</p></details>
+          <div class="tables"><span class="lbl">Code</span><span class="tbl fn"><b>commit</b><i>psycopg</i></span><span class="tbl fn"><b>input_tokens, output_tokens, cost_usd</b><i>core/skills.py</i></span></div>
+          <div class="io"><div><span class="h">Input</span><pre>after 3 postings: done = 3, failed = 0</pre></div><div><span class="h">Output</span><pre>jobs.postings
+job_id | other_skills
+4012   | {causal ml}
+3950   | {}
+3987   | {dbt,data modeling}
+
+Tagged 3, failed 0. Tokens: 5,472 in, 340 out. Cost: $0.001
+exit code 0</pre></div></div>
+        </div></li>
+          </ol>
         </div></li>
       </ol>
+      <p class="note">The results feed <code>jobs.role_skills</code> (skills per role with their category) and the emerging-skills list from <code>other_skills</code>. When an emerging skill keeps appearing, add it to <code>skills.yaml</code> and run <code>--retag</code> with that word.</p>
     </section>
 
     <section>
@@ -756,15 +1398,15 @@ svg .ah-cool { fill: var(--cool); }
             <tr><td><code>transform.py</code></td><td>Pure functions, no I/O: merge searches, remove personal data, parse salary, build clean rows.</td></tr>
             <tr><td><code>load.py</code></td><td>All the SQL writes for postings: raw insert, staged upsert, <code>retag_all</code>, <code>rehash_all</code>.</td></tr>
             <tr><td><code>config.yaml</code> · <code>themes.yaml</code></td><td>What to search, and the keyword themes. You can change either without touching code.</td></tr>
-            <tr><td><code>skill_discover.py</code></td><td>Module 12, Pass 1. Not committed yet.</td></tr>
-            <tr><td><code>skill_tag.py</code> · <code>skills.yaml</code></td><td>Module 12, Pass 2, and its reviewed list. Not created yet.</td></tr>
+            <tr><td><code>skill_discover.py</code></td><td>Module 12, Pass 1: drafts the skill list. Not committed yet.</td></tr>
+            <tr><td><code>skill_tag.py</code> · <code>skills.yaml</code></td><td>Module 12, Pass 2: tags postings against the list. The script is written and not committed yet. <code>skills.yaml</code> comes from Pass 1.</td></tr>
             <tr><td><code>explore.py</code></td><td>One-off: scrapes 5 jobs into <code>samples/raw_sample.json</code> so you can see the raw fields.</td></tr>
             <tr><td class="grp" colspan="2">core/ · shared tools</td></tr>
             <tr><td><code>settings.py</code> · <code>db.py</code> · <code>runlog.py</code></td><td>Secrets, connection and migrations, run log</td></tr>
             <tr><td><code>text.py</code> · <code>skills.py</code></td><td>Hashing and keyword themes · LLM skill tools</td></tr>
             <tr><td><code>check_connections.py</code></td><td>One-off: checks that the Apify and Supabase credentials work.</td></tr>
             <tr><td class="grp" colspan="2">elsewhere</td></tr>
-            <tr><td><code>sql/</code></td><td>Database schema, applied in name order by <code>core.db</code></td></tr>
+            <tr><td><code>sql/</code></td><td>Database schema, applied in name order by <code>core.db</code>: <code>001</code> run log, <code>010</code> postings, <code>020</code> analysis views, <code>040</code> skills</td></tr>
             <tr><td><code>tests/</code></td><td>Salary parsing, privacy, hashes, cross-search merge, monthly dedup, and an end-to-end run against a fake Apify</td></tr>
             <tr><td><code>demo.py</code> · <code>samples/</code></td><td>Scratch scripts that run <code>transform</code> on the saved sample</td></tr>
             <tr><td><code>pyproject.toml</code> · <code>uv.lock</code></td><td>Dependencies: anthropic, apify-client, psycopg, python-dotenv, pyyaml; pytest for dev</td></tr>
@@ -956,8 +1598,58 @@ svg .ah-cool { fill: var(--cool); }
 </main>
 
 <script>
+/* Colour the code boxes like VS Code Dark Modern. Each box holds lines like " 69      code"; the
+   number is kept as-is and the rest is tokenized as one block so multi-line strings work. */
 (function () {
-  var pages = ["overview", "pipeline", "database", "llm", "files", "sample"];
+  var KW = /^(import|from|as|return|if|elif|else|for|while|try|except|finally|with|raise|continue|break|pass|yield|del|assert)$/;
+  var ST = /^(def|class|lambda|None|True|False|self|cls|in|not|and|or|is|global|nonlocal)$/;
+  var TYPES = /^(str|int|float|bool|list|dict|set|tuple|bytes|object|type)$/;
+  var TOK = /(#[^\n]*)|([rRbBuUfF]{0,2}(?:"""[\s\S]*?(?:"""|$)|'''[\s\S]*?(?:'''|$)|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'))|(\b\d[\d_]*(?:\.\d+)?\b)|(@\w+)|([A-Za-z_]\w*)|(\s+)|([\s\S])/g;
+  function esc(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  document.querySelectorAll("details.src pre").forEach(function (pre) {
+    var prefixes = [], code = [];
+    pre.textContent.split("\n").forEach(function (line) {
+      var m = line.match(/^(\s*\d+  )/);
+      prefixes.push(m ? m[1] : "");
+      code.push(m ? line.slice(m[1].length) : line);
+    });
+    var text = code.join("\n"), out = [""], prev = "", m;
+    function emit(cls, t) {
+      t.split("\n").forEach(function (piece, i) {
+        if (i > 0) out.push("");
+        if (piece) out[out.length - 1] += cls ? '<span class="' + cls + '">' + esc(piece) + "</span>" : esc(piece);
+      });
+    }
+    TOK.lastIndex = 0;
+    while ((m = TOK.exec(text)) !== null) {
+      var t = m[0], cls = "";
+      if (m[1]) cls = "cm";
+      else if (m[2]) cls = "s";
+      else if (m[3]) cls = "n";
+      else if (m[4]) cls = "fn";
+      else if (m[5]) {
+        var next = text.slice(TOK.lastIndex).match(/^\s*(\S)/), call = next && next[1] === "(";
+        if (KW.test(t)) cls = "kw";
+        else if (ST.test(t)) cls = "st";
+        else if (prev === "def") cls = "fn";
+        else if (prev === "class") cls = "cl";
+        else if (/^[A-Z][A-Z0-9_]+$/.test(t)) cls = "co";
+        else if (/^[A-Z]/.test(t) || TYPES.test(t)) cls = "cl";
+        else cls = call ? "fn" : "va";
+      }
+      if (!m[6]) prev = t;
+      emit(cls, t);
+    }
+    pre.innerHTML = out.map(function (html, i) {
+      return (prefixes[i] ? '<span class="ln">' + prefixes[i] + "</span>" : "") + html;
+    }).join("\n");
+    pre.classList.add("hl");
+  });
+})();
+
+(function () {
+  var pages =["overview", "pipeline", "database", "llm", "files", "sample"];
   function show() {
     var k = (location.hash || "").replace("#", "");
     if (pages.indexOf(k) < 0) k = "overview";

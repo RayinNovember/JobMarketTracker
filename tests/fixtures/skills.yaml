@@ -1,0 +1,19 @@
+# A small skill list for the tests (Module 12).
+- skill: Python
+  category: technical
+  definition: Writing Python for analysis, modeling or production.
+- skill: SQL
+  category: technical
+  definition: Querying and shaping data with SQL.
+- skill: A/B testing
+  category: technical
+  definition: Designing and analyzing controlled experiments.
+- skill: Presenting to leadership
+  category: communication
+  definition: Explaining results and recommendations to senior stakeholders.
+- skill: Metric definition and KPI design
+  category: business
+  definition: Choosing and defining the metrics that measure success.
+- skill: Mentoring
+  category: leadership
+  definition: Coaching and developing other analysts or scientists.

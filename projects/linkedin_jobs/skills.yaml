@@ -1,0 +1,193 @@
+# Skill list for Pass 2 (skill_tag.py). Cleaned from skills_draft.yaml (500 postings, 78 skills) on 2026-11-09:
+# near-duplicates merged, a few categories and names fixed. See guides/module12-notes.md.
+# Categories: technical, communication, business, leadership. Keep the three keys on every entry.
+
+# ---------- technical ----------
+- skill: SQL
+  category: technical
+  definition: Writing and optimizing SQL queries to extract, join, transform and analyze data in relational databases.
+- skill: Python
+  category: technical
+  definition: Writing Python code for data manipulation, analysis, automation or data-driven applications.
+- skill: R
+  category: technical
+  definition: Using R for statistical computing, analysis, modeling or reproducible reports.
+- skill: Excel
+  category: technical
+  definition: Using Excel for analysis, including advanced formulas, pivot tables and lookups.
+- skill: Git
+  category: technical
+  definition: Using Git or similar version control to track and collaborate on code.
+- skill: Statistical analysis and modeling
+  category: technical
+  definition: Applying statistical methods and models (descriptive statistics, significance tests, quantitative
+    methods) to draw conclusions from data. Use Regression analysis or A/B testing when the posting names them.
+- skill: Regression analysis
+  category: technical
+  definition: Building regression models (linear, logistic and similar) to explain or predict an outcome.
+- skill: A/B testing and experimentation
+  category: technical
+  definition: Designing and analyzing controlled experiments, including hypotheses, sample sizes, metrics
+    and significance testing.
+- skill: Causal inference
+  category: technical
+  definition: Estimating cause-and-effect from observational or experimental data with methods such as
+    difference-in-differences, matching or instrumental variables.
+- skill: Machine learning and predictive modeling
+  category: technical
+  definition: Building, training and evaluating supervised models that predict outcomes or classify cases.
+- skill: ML libraries
+  category: technical
+  definition: Using machine learning libraries such as scikit-learn, XGBoost, TensorFlow or PyTorch.
+- skill: Deep learning
+  category: technical
+  definition: Building neural network models for image, text, sequence or similar data.
+- skill: Unsupervised learning
+  category: technical
+  definition: Finding structure without labels, such as clustering, segmentation, anomaly detection or
+    pattern mining.
+- skill: Feature engineering
+  category: technical
+  definition: Creating and transforming input variables to improve machine learning models.
+- skill: Model deployment and MLOps
+  category: technical
+  definition: Putting models into production and keeping them running, including monitoring, retraining
+    and ML pipelines.
+- skill: Natural language processing
+  category: technical
+  definition: Extracting meaning from text, such as classification, entity extraction or topic modeling.
+- skill: Large language models and generative AI
+  category: technical
+  definition: Applying or building with LLMs and generative AI, such as prompt design, RAG or AI agents.
+- skill: Forecasting and time series
+  category: technical
+  definition: Analyzing time-indexed data for trends and seasonality, and forecasting future values.
+- skill: Data analysis
+  category: technical
+  definition: Examining and interpreting data to answer questions, including exploratory analysis and
+    working with large datasets.
+- skill: Data cleaning and quality
+  category: technical
+  definition: Finding and fixing errors, missing values and inconsistencies, and validating or monitoring
+    data quality.
+- skill: Data governance
+  category: technical
+  definition: Setting and following policies for data ownership, security, privacy and proper use.
+- skill: Data modeling
+  category: technical
+  definition: Designing schemas and data structures (tables, star schemas, semantic models) for analysis
+    and storage.
+- skill: Data pipelines (ETL/ELT)
+  category: technical
+  definition: Building and maintaining workflows that move and transform data, with tools such as dbt or
+    Airflow.
+- skill: Apache Spark
+  category: technical
+  definition: Using Spark or PySpark for distributed data processing.
+- skill: Databricks
+  category: technical
+  definition: Using the Databricks platform for data processing, notebooks or ML workflows.
+- skill: Snowflake
+  category: technical
+  definition: Working with the Snowflake cloud data warehouse.
+- skill: Cloud platforms
+  category: technical
+  definition: Using AWS, Azure or Google Cloud services for data storage, computing or deployment.
+- skill: Dashboard development
+  category: technical
+  definition: Building dashboards and reports in a BI tool for people to monitor metrics. Also tag Tableau
+    or Power BI when the posting names them.
+- skill: Data visualization
+  category: technical
+  definition: Creating charts and visuals that make patterns clear, in any tool or code library.
+- skill: Tableau
+  category: technical
+  definition: Building dashboards or analyses in Tableau.
+- skill: Power BI
+  category: technical
+  definition: Building reports, data models or DAX measures in Microsoft Power BI.
+- skill: Automation
+  category: technical
+  definition: Automating recurring reports, data refreshes or manual workflows with scripts or tools.
+
+# ---------- communication ----------
+- skill: Stakeholder management
+  category: communication
+  definition: Working with business stakeholders across a project, setting expectations, sharing progress
+    and agreeing on priorities.
+- skill: Presenting insights
+  category: communication
+  definition: Presenting analysis and recommendations to leaders or non-technical audiences in plain language.
+- skill: Data storytelling
+  category: communication
+  definition: Shaping findings into a narrative that leads the audience to a decision.
+- skill: Communication skills
+  category: communication
+  definition: General written, verbal or interpersonal communication, when the posting asks for it without
+    a more specific skill above.
+- skill: Cross-functional collaboration
+  category: communication
+  definition: Working with other functions such as engineering, product or operations to deliver shared
+    goals.
+- skill: Requirements gathering
+  category: communication
+  definition: Finding out and documenting what stakeholders need before building an analysis or product.
+- skill: Documentation
+  category: communication
+  definition: Writing clear documentation of data, methods, code or processes for others to use.
+
+# ---------- business ----------
+- skill: Business acumen
+  category: business
+  definition: Understanding how the business makes money and using that to set analytical priorities.
+- skill: Decision support and recommendations
+  category: business
+  definition: Turning analysis into actionable recommendations that help leaders make decisions.
+- skill: Metric and KPI definition
+  category: business
+  definition: Choosing, defining and validating the metrics and KPIs that measure success.
+- skill: Product analytics
+  category: business
+  definition: Analyzing product usage, funnels and feature adoption to inform product decisions.
+- skill: Customer analytics
+  category: business
+  definition: Analyzing customer behavior, segments, retention or lifetime value.
+- skill: Marketing analytics
+  category: business
+  definition: Measuring campaign performance, attribution and marketing return on investment.
+- skill: Financial analysis
+  category: business
+  definition: Analyzing financial data, budgets and forecasts to support business decisions.
+- skill: Healthcare domain knowledge
+  category: business
+  definition: Understanding healthcare data, terminology, regulations or operations, such as claims, EHR
+    or HIPAA.
+- skill: Process improvement
+  category: business
+  definition: Finding inefficiencies in business processes and using data to improve them.
+- skill: Root cause analysis
+  category: business
+  definition: Investigating systematically why a metric or process changed, to find the underlying cause.
+
+# ---------- leadership ----------
+- skill: Mentoring
+  category: leadership
+  definition: Coaching and developing other analysts or data scientists, including code review and guidance.
+- skill: Project management
+  category: leadership
+  definition: Planning, scheduling and tracking projects to deliver outcomes on time.
+- skill: Prioritization and organization
+  category: leadership
+  definition: Managing several tasks and deadlines at once, and keeping work organized.
+- skill: Ownership and independent work
+  category: leadership
+  definition: Taking ownership of work and driving it to completion with little supervision.
+- skill: Solving ambiguous problems
+  category: leadership
+  definition: Breaking down complex or open-ended problems and finding a path forward.
+- skill: Continuous learning
+  category: leadership
+  definition: Keeping skills current by learning new tools, methods and domains.
+- skill: Attention to detail
+  category: leadership
+  definition: Checking work carefully for accuracy and catching subtle errors.

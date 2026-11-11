@@ -120,7 +120,8 @@ def extract_open(claude:Claude, text: str) -> list[dict]:
         "posting asks for, as a short noun phrase (2 to 6 words), with its category. Include "
         f"non-technical skills as well as technical ones. {IGNORE}\n\n{CATEGORY_HELP}"
     )
-    reply = claude.ask(system = system, content = text[:MAX_TEXT_CHARS], schema = OPEN_SCHEMA, max_tokens = 800)
+    # 800 tokens cut off about 1 in 4 replies (long postings list 40+ skills); you only pay for tokens used.
+    reply = claude.ask(system = system, content = text[:MAX_TEXT_CHARS], schema = OPEN_SCHEMA, max_tokens = 2000)
     return reply['skills']
 
 
@@ -192,7 +193,8 @@ class SkillTagger:
             system=self.system, 
             content = text[:MAX_TEXT_CHARS], 
             schema=self.schema,
-            max_tokens=800
+            # 800 cut off 11 of ~2,000 replies (postings matching 30+ skills); same fix as extract_open.
+            max_tokens=2000
             )
         known = {n.lower(): n for n in self.names}
         found: dict[str,str]={}

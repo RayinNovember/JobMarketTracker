@@ -1,0 +1,270 @@
+# Draft skill list from 500 postings. Review it, then save as skills.yaml.
+# Rename, merge, split or delete freely; categories: technical, communication, business, leadership.
+
+- skill: Actionable insight generation
+  category: business
+  definition: Deriving findings from data that point to specific decisions or changes with business value.
+- skill: Attention to detail
+  category: business
+  definition: Carefully checking work and data for accuracy, edge cases, and subtle errors.
+- skill: Business acumen
+  category: business
+  definition: Understanding how a business makes money and applying that understanding to analytical priorities.
+- skill: Customer behavior analysis
+  category: business
+  definition: Studying customer actions and patterns to understand preferences, retention, and value.
+- skill: Data-driven decision support
+  category: business
+  definition: Providing evidence and analysis that help stakeholders make informed business decisions.
+- skill: Financial analysis
+  category: business
+  definition: Analyzing financial data, forecasts, and performance to support budgeting and business decisions.
+- skill: Healthcare domain knowledge
+  category: business
+  definition: Understanding healthcare data, terminology, regulations, and operations to apply analytics
+    in that context.
+- skill: KPI definition
+  category: business
+  definition: Defining, specifying, and validating key performance indicators that measure business outcomes.
+- skill: Marketing analytics
+  category: business
+  definition: Measuring campaign performance, attribution, and customer response to inform marketing strategy.
+- skill: Process improvement
+  category: business
+  definition: Identifying inefficiencies in workflows and using data to redesign them for better outcomes.
+- skill: Product analytics
+  category: business
+  definition: Analyzing user behavior and product usage to inform feature and product strategy decisions.
+- skill: Cross-functional collaboration
+  category: communication
+  definition: Working effectively with teams outside one's own function, such as engineering, product,
+    and business units, to deliver shared goals.
+- skill: Data storytelling
+  category: communication
+  definition: Structuring data insights into a narrative that motivates understanding and action.
+- skill: Executive communication
+  category: communication
+  definition: Communicating concise, decision-focused analysis to senior leaders and executives.
+- skill: Explaining data insights
+  category: communication
+  definition: Translating technical findings into plain-language explanations that non-specialists can
+    act on.
+- skill: Interpersonal skills
+  category: communication
+  definition: Building rapport and working constructively with colleagues through effective personal interaction.
+- skill: Presentation skills
+  category: communication
+  definition: Delivering clear, engaging presentations of analysis and recommendations to varied audiences.
+- skill: Requirements gathering
+  category: communication
+  definition: Eliciting and documenting business and stakeholder needs that shape analytical deliverables.
+- skill: Stakeholder communication
+  category: communication
+  definition: Conveying analytical findings, progress, and recommendations clearly to business stakeholders
+    and decision makers.
+- skill: Stakeholder management
+  category: communication
+  definition: Managing expectations, priorities, and relationships with stakeholders across an analytical
+    engagement.
+- skill: Technical documentation
+  category: communication
+  definition: Writing clear documentation of data sources, methods, code, and processes for others to
+    use and maintain.
+- skill: Verbal communication
+  category: communication
+  definition: Presenting ideas, explaining analysis, and discussing results effectively in meetings and
+    conversations.
+- skill: Written communication
+  category: communication
+  definition: Producing clear written deliverables such as reports, documentation, emails, and summaries.
+- skill: Continuous learning
+  category: leadership
+  definition: Actively acquiring new tools, methods, and domain knowledge to keep skills current.
+- skill: Independent work
+  category: leadership
+  definition: Taking ownership of tasks and driving them to completion with limited direct supervision.
+- skill: Mentoring data professionals
+  category: leadership
+  definition: Guiding junior analysts and data scientists through technical growth, code review, and career
+    development.
+- skill: Multi-priority management
+  category: leadership
+  definition: Balancing and sequencing competing tasks and deadlines across several initiatives at once.
+- skill: Organizational skills
+  category: leadership
+  definition: Structuring work, files, and priorities so that tasks are tracked and delivered efficiently.
+- skill: Problem solving
+  category: leadership
+  definition: Breaking down complex or ambiguous problems into tractable parts and identifying effective
+    solutions.
+- skill: Project management
+  category: leadership
+  definition: Planning, scheduling, and tracking analytical projects to deliver defined outcomes on time.
+- skill: A/B testing
+  category: technical
+  definition: Designing and analyzing controlled experiments that compare variants to measure impact on
+    outcomes.
+- skill: Algorithm development
+  category: technical
+  definition: Designing and implementing algorithms to solve analytical or computational problems.
+- skill: Anomaly detection
+  category: technical
+  definition: Identifying unusual or unexpected data points and patterns that deviate from normal behavior.
+- skill: Apache Spark
+  category: technical
+  definition: Using Apache Spark for distributed data processing and analytics at scale.
+- skill: Business intelligence tools
+  category: technical
+  definition: Using BI platforms to model, visualize, and distribute business metrics and reports.
+- skill: Causal inference
+  category: technical
+  definition: Estimating cause-and-effect relationships from observational or experimental data using
+    appropriate methods.
+- skill: Cloud platforms (AWS)
+  category: technical
+  definition: Using Amazon Web Services for data storage, computation, and deployment of analytics solutions.
+- skill: Clustering
+  category: technical
+  definition: Grouping observations into segments based on similarity using unsupervised algorithms.
+- skill: Dashboard development
+  category: technical
+  definition: Designing and building dashboards that track metrics and enable users to monitor and explore
+    data.
+- skill: Data analysis
+  category: technical
+  definition: Examining, cleaning, and interpreting datasets to answer questions and surface insights.
+- skill: Data cleaning
+  category: technical
+  definition: Identifying and correcting errors, missing values, duplicates, and inconsistencies in raw
+    data.
+- skill: Data governance
+  category: technical
+  definition: Establishing policies, standards, and practices that ensure data quality, security, and
+    proper use.
+- skill: Data mining
+  category: technical
+  definition: Discovering patterns, associations, and anomalies in large datasets using automated techniques.
+- skill: Data modeling
+  category: technical
+  definition: Designing schemas and conceptual or logical data structures that organize data for analysis
+    and storage.
+- skill: Data pipeline development
+  category: technical
+  definition: Building and maintaining ETL and ELT workflows that move and transform data reliably.
+- skill: Data quality management
+  category: technical
+  definition: Monitoring, measuring, and improving the accuracy, completeness, and reliability of data.
+- skill: Data validation
+  category: technical
+  definition: Checking that data is accurate, complete, and consistent with expected rules before it is
+    used.
+- skill: Data visualization
+  category: technical
+  definition: Creating charts, graphs, and visual representations that make data patterns clear and interpretable.
+- skill: Databricks platform
+  category: technical
+  definition: Using the Databricks lakehouse platform for large-scale data processing, notebooks, and
+    machine learning workflows.
+- skill: Deep learning
+  category: technical
+  definition: Building neural network models for tasks such as image, text, or sequence analysis.
+- skill: Experiment design
+  category: technical
+  definition: Planning experiments with clear hypotheses, controls, sample sizes, and metrics to yield
+    valid results.
+- skill: Exploratory data analysis
+  category: technical
+  definition: Investigating datasets through summaries and visualizations to understand structure and
+    find initial patterns.
+- skill: Feature engineering
+  category: technical
+  definition: Creating and transforming input variables to improve the performance of machine learning
+    models.
+- skill: Forecasting
+  category: technical
+  definition: Predicting future values of metrics using historical time-based data and statistical or
+    ML methods.
+- skill: Git version control
+  category: technical
+  definition: Using Git to track, branch, and collaborate on code and analytical artifacts.
+- skill: Hypothesis testing
+  category: technical
+  definition: Formulating null and alternative hypotheses and applying statistical tests to evaluate them.
+- skill: Large dataset analysis
+  category: technical
+  definition: Analyzing very large volumes of data using scalable tools and efficient processing techniques.
+- skill: Large language models
+  category: technical
+  definition: Applying and integrating LLMs and generative AI techniques into analytics and applications.
+- skill: Machine learning
+  category: technical
+  definition: Building, training, and evaluating supervised and unsupervised models that learn patterns
+    from data to make predictions.
+- skill: Microsoft Excel
+  category: technical
+  definition: Using Excel for data organization, calculation, pivot tables, and analysis, including advanced
+    formulas.
+- skill: Model deployment
+  category: technical
+  definition: Putting trained models into production so they can generate predictions in live systems.
+- skill: Natural language processing
+  category: technical
+  definition: Applying techniques to extract meaning and structure from text data, including classification
+    and entity extraction.
+- skill: Power BI reporting
+  category: technical
+  definition: Developing dashboards, reports, and data models in Microsoft Power BI, including DAX and
+    Power Query.
+- skill: Predictive modeling
+  category: technical
+  definition: Developing models that forecast future outcomes or classify unseen cases based on historical
+    data.
+- skill: Process automation
+  category: technical
+  definition: Using scripts and tools to automate repetitive analytical or operational workflows.
+- skill: Python programming
+  category: technical
+  definition: Writing Python code for data manipulation, analysis, automation, and building data-driven
+    applications.
+- skill: Quantitative analysis
+  category: technical
+  definition: Using numerical methods and measurable evidence to evaluate problems and decisions.
+- skill: R programming
+  category: technical
+  definition: Using R for statistical computing, data analysis, modeling, and producing reproducible reports.
+- skill: Regression analysis
+  category: technical
+  definition: Modeling relationships between variables to explain or predict a continuous or categorical
+    outcome.
+- skill: Reporting automation
+  category: technical
+  definition: Automating recurring reports and data refreshes to reduce manual effort and improve timeliness.
+- skill: Root cause analysis
+  category: technical
+  definition: Investigating data and processes systematically to identify the underlying cause of an observed
+    problem.
+- skill: SQL querying
+  category: technical
+  definition: Writing and optimizing SQL queries to extract, join, transform, and analyze data from relational
+    databases.
+- skill: Scikit-learn and ML libraries
+  category: technical
+  definition: Applying Python machine learning libraries such as scikit-learn, TensorFlow, and PyTorch
+    to build and train models.
+- skill: Snowflake data platform
+  category: technical
+  definition: Working with the Snowflake cloud data warehouse for storing, querying, and sharing data.
+- skill: Statistical analysis
+  category: technical
+  definition: Applying statistical methods such as hypothesis testing, regression, and descriptive statistics
+    to draw conclusions from data.
+- skill: Statistical modeling
+  category: technical
+  definition: Specifying and fitting statistical models to quantify relationships and support inference
+    or prediction.
+- skill: Tableau dashboarding
+  category: technical
+  definition: Building interactive dashboards and reports in Tableau to explore and communicate data.
+- skill: Time series analysis
+  category: technical
+  definition: Analyzing data indexed over time to identify trends, seasonality, and dependencies.
