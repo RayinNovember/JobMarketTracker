@@ -101,7 +101,7 @@ def test_skill_tag_script(monkeypatch, tmp_path):
 
     from core import db
     from core.text import ThemeTagger
-    from projects.linkedin_jobs import load, skill_tag
+    from projects.linkedin_jobs import load, skill_queries, skill_tag
     from projects.linkedin_jobs.transform import merge_items, to_row
 
     monkeypatch.setenv("SUPABASE_DB_URL", DB)
@@ -135,6 +135,25 @@ def test_skill_tag_script(monkeypatch, tmp_path):
         # every posting is marked as done, with the cleaned other skill
         assert conn.execute("select distinct other_skills from jobs.postings").fetchall() \
             == [(["marketplace analytics"],)]
+
+        # The dashboard's skills queries (Module 12.8)
+        d = skill_queries.skills_dashboard(conn, ["data scientist"], date(2026, 10, 1), date(2026, 10, 1), 2)
+        sql = next(r for r in d["skills"] if r["skill"] == "SQL")
+        assert (sql["category"], sql["roles"], sql["pct"], sql["pct_required"]) == ("technical", 2, 100.0, 100.0)
+        mentoring = next(r for r in d["skills"] if r["skill"] == "Mentoring")
+        assert (mentoring["category"], mentoring["pct_required"]) == ("leadership", 0.0)
+        assert d["emerging"] == [{"phrase": "marketplace analytics", "roles": 2}]
+        assert d["tagged_roles"] == 2
+
+    # The dashboard shows the skills section
+    import streamlit as st
+    from streamlit.testing.v1 import AppTest
+
+    st.cache_data.clear()  # an earlier test may have cached "no skills yet"
+    at = AppTest.from_file(str(ROOT / "projects/linkedin_jobs/app.py"), default_timeout=30).run()
+    assert not at.exception
+    assert "Skills by category" in [h.value for h in at.subheader]
+    assert [t.label for t in at.tabs] == ["Technical", "Communication", "Business", "Leadership"]
 
     # Nothing left to tag; a second run only syncs the list
     assert skill_tag.main([]) == 0
